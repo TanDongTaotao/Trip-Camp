@@ -1,0 +1,162 @@
+Trip-Camp 酒店项目 API 注释说明（Express 版）
+
+1. 如何导入到 Apifox
+1) 打开 Apifox -> 新建/进入项目
+2) 导入 -> OpenAPI（Swagger）-> 选择 OpenAPI 3.0
+3) 复制粘贴 apifox-openapi.yaml 全部内容，或直接导入该文件
+4) 导入后可在 Apifox 里配置环境变量（例如 baseUrl=http://localhost:3000/api/v1）
+
+2. 基本约定（强烈建议所有端统一遵守）
+2.1 Base URL
+- /api/v1
+
+2.2 认证方式（Bearer Token）
+- 登录/注册成功后返回 token
+- 之后请求需要携带请求头：
+  Authorization: Bearer <token>
+- token 建议放在：
+  - 用户端（Taro）：Taro.setStorageSync('token', token)
+  - 管理端（Web）：localStorage/sessionStorage（更严谨可用 httpOnly cookie，但新手不建议第一周搞）
+
+2.3 角色（role）
+- user：普通用户（移动端/小程序）
+- merchant：商户（管理端，录入/编辑自己酒店）
+- admin：管理员（管理端，审核/发布/下线）
+
+重要：不建议开放 admin 注册接口。admin 账号由后端手动在数据库创建，或用种子脚本创建。
+
+3. 酒店状态机（答辩必备）
+3.1 审核状态 auditStatus
+- draft：草稿（商户创建/编辑阶段）
+- pending：待审核（商户提交审核后）
+- approved：审核通过
+- rejected：审核拒绝（需有 rejectReason）
+
+3.2 上下线状态 onlineStatus
+- offline：未发布/已下线
+- online：已发布（用户端可见）
+
+3.3 推荐流程
+商户：
+- 新建/编辑酒店：draft
+- 点击“提交审核”：draft -> pending
+
+管理员：
+- 审核通过：pending -> approved
+- 审核拒绝：pending -> rejected（写入 rejectReason）
+- 发布：approved + offline -> online
+- 下线：online -> offline
+
+用户端可见性规则（建议写死在后端查询里，减少前端判断）：
+- 只有 auditStatus=approved 且 onlineStatus=online 且 deletedAt 为空 的酒店，才对用户端的 /hotels 和 /hotels/:id 可见
+
+4. 数据模型字段说明（与训练营必做维度对齐）
+4.1 酒店必做字段（Hotel）
+- nameCn：酒店名（中文展示）
+- nameEn：酒店名（英文展示，可选但建议有）
+- address：酒店地址
+- city：城市
+- star：酒店星级（1-5）
+- type：酒店类型（例如 酒店/民宿/公寓）
+- minPrice：酒店价格（列表页展示“起”）
+- openTime：酒店开业时间（可用年份字符串）
+
+4.2 列表页展示字段（HotelCard）
+- coverImage：封面图（取 images[0] 或单独存）
+- tags：快捷标签（亲子/豪华/免费停车等）
+
+4.3 详情页字段（HotelDetail）
+- images：轮播图
+- roomTypes：房型列表（新手推荐内嵌在酒店里，少建表少踩坑）
+- nearby/discounts：加分项字段（可以先不做 UI 或后端先返回空数组/空对象）
+
+5. 接口与页面映射（你们做功能时按这个对照）
+5.1 用户端（Taro）
+- 酒店查询页（首页）：
+  - GET /hotels（带 city/keyword/checkIn/checkOut/tags 等查询参数）
+- 酒店列表页：
+  - GET /hotels（分页 page/pageSize；排序 sort）
+- 酒店详情页：
+  - GET /hotels/:id
+
+5.2 管理端（商户）
+- 登录/注册页：
+  - POST /auth/register
+  - POST /auth/login
+  - GET /auth/me（用于刷新登录态、判断角色）
+- 酒店信息录入/编辑/修改页：
+  - POST /merchant/hotels（新建）
+  - PUT /merchant/hotels/:id（编辑）
+  - POST /merchant/hotels/:id/submit（提交审核）
+- 酒店列表页（商户自己的）：
+  - GET /merchant/hotels
+
+5.3 管理端（管理员）
+- 酒店信息审核/发布/下线列表页：
+  - GET /admin/hotels（筛选 auditStatus、onlineStatus）
+  - POST /admin/hotels/:id/audit（approve/reject）
+  - POST /admin/hotels/:id/publish（发布）
+  - POST /admin/hotels/:id/offline（下线）
+  - DELETE /admin/hotels/:id（软删除，可恢复；可作为加分项）
+
+6. 分页与筛选约定（前后端统一，少扯皮）
+6.1 分页
+- 请求：page 从 1 开始，pageSize 建议默认 10
+- 响应：
+  - list：当前页数据
+  - page/pageSize：回显
+  - total：总数
+
+6.2 筛选与排序（先做最关键，避免爆炸）
+- city：城市筛选（Taro 定位/选择城市后传）
+- keyword：关键词（酒店名/地址模糊匹配）
+- tags：用逗号分隔字符串（例如 亲子,豪华）
+- sort：
+  - priceAsc：价格从低到高
+  - priceDesc：价格从高到低
+  - starDesc：星级从高到低
+
+7. 错误处理建议（新手也能做得很专业）
+建议所有错误统一返回 JSON：
+{
+  "code": "SOME_ERROR_CODE",
+  "message": "人能看懂的错误信息",
+  "details": { ...可选 }
+}
+
+常见 HTTP 状态码建议：
+- 401：未登录/Token 无效（UNAUTHORIZED）
+- 403：已登录但无权限（FORBIDDEN）
+- 404：资源不存在（NOT_FOUND）
+- 409：状态冲突（例如重复提交审核/重复发布）（CONFLICT）
+- 422：参数校验失败（VALIDATION_ERROR）
+- 500：未知错误（INTERNAL_ERROR）
+
+前端统一处理建议：
+- 401：清空 token -> 跳转登录页
+- 403：提示“无权限”
+- 422：提示表单字段错误（可把 details 显示到对应字段）
+
+8. 最小落地建议（你们按这个顺序做，最不容易卡）
+第 1 阶段（先跑通登录态）
+- POST /auth/register
+- POST /auth/login
+- GET /auth/me
+
+第 2 阶段（先让用户端可见）
+- GET /hotels（先返回少量假数据也行）
+- GET /hotels/:id
+
+第 3 阶段（打通商户->审核->发布）
+- POST /merchant/hotels
+- PUT /merchant/hotels/:id
+- POST /merchant/hotels/:id/submit
+- POST /admin/hotels/:id/audit
+- POST /admin/hotels/:id/publish
+- GET /hotels（此时只展示 online 且 approved 的酒店）
+
+9. 你们现在没有做的部分（可留作加分项，不影响必做）
+- 附近景点/交通/商场：nearby 字段
+- 折扣/优惠：discounts 字段
+- 图片上传：先用“图片 URL 输入框”替代，最后再补上传
+- 真实“库存/房态/价格日历”：可以不做，只做 UI 和参数透传即可
