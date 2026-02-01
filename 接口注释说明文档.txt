@@ -23,7 +23,9 @@ Trip-Camp 酒店项目 API 注释说明（Express 版）
 - merchant：商户（管理端，录入/编辑自己酒店）
 - admin：管理员（管理端，审核/发布/下线）
 
-重要：不建议开放 admin 注册接口。admin 账号由后端手动在数据库创建，或用种子脚本创建。
+重要：生产环境不建议开放 admin 注册接口。为了满足本次作业“注册界面可选择角色”的要求，本项目允许通过环境变量开启：
+- ALLOW_ADMIN_REGISTER=true：允许注册 admin
+- 不配置或为 false：默认禁止注册 admin（更安全）
 
 3. 酒店状态机（答辩必备）
 3.1 审核状态 auditStatus
