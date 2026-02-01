@@ -1,0 +1,36 @@
+第五期前端训练营大作业说明_56464 Copy.pdf
+
+# Node / JS
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Builds
+dist/
+build/
+.next/
+out/
+
+# Taro
+.temp/
+.rn_temp/
+.cache/
+
+# Tests / coverage
+coverage/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Secrets (do not commit)
+Mongodb.txt
