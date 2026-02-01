@@ -31,3 +31,6 @@ coverage/
 Thumbs.db
 .idea/
 .vscode/
+
+# Secrets (do not commit)
+Mongodb.txt
