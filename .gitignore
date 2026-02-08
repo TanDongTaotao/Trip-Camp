@@ -2,6 +2,8 @@
 
 # Node / JS
 node_modules/
+.npm-cache/
+.swc/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
