@@ -14,7 +14,14 @@ async function main() {
   const port = getNumberEnv('PORT', 3000)
 
   // 连接数据库（失败会直接抛错并退出）
-  await connectDb()
+  console.log('Connecting to DB...')
+  try {
+    await connectDb()
+    console.log('Connected to DB')
+  } catch (err) {
+    console.log('DB Connection failed:', err.message)
+    process.exit(1)
+  }
 
   const app = createApp()
   app.listen(port, () => {

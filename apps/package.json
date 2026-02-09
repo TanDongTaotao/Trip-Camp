@@ -1,0 +1,7 @@
+{
+  "name": "apps-root",
+  "private": true,
+  "devDependencies": {
+    "@tarojs/cli": "^4.1.11"
+  }
+}
