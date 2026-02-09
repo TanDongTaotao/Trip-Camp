@@ -3,6 +3,9 @@ import Taro from '@tarojs/taro'
 import { request } from '../../utils/request'
 
 export default function Home() {
+  // 阶段 0：用于验证“登录态是否生效”
+  // - 已登录：/auth/me 返回 user，Toast 打招呼
+  // - 未登录/过期：跳转到登录页
   const checkAuth = async () => {
     try {
       const res = await request({ url: '/auth/me' })

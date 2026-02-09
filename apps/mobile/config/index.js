@@ -1,3 +1,6 @@
+// Taro 项目配置入口：
+// - mini：小程序相关构建配置
+// - h5：H5 构建与 devServer 配置
 const config = {
   projectName: 'trip-camp-mobile',
   date: '2024-02-08',
@@ -61,6 +64,9 @@ const config = {
       }
     },
     devServer: {
+      // H5 开发代理（可选）：
+      // - 访问 /api/v1/* 时转发到本机后端 http://localhost:3000
+      // - 主要用于规避浏览器跨域问题
       proxy: {
         '/api/v1': {
           target: 'http://localhost:3000',
