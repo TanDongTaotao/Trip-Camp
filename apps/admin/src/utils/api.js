@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getToken } from './auth'
+import { getToken, clearAuth } from './auth'
 
 // 创建axios实例
 const api = axios.create({
@@ -35,8 +35,11 @@ api.interceptors.response.use(
       const { status, data } = error.response
       if (status === 401) {
         // 未授权，需要重新登录
-        // 这里可以添加跳转到登录页的逻辑
         console.error('未授权，请重新登录')
+        // 清除token
+        clearAuth()
+        // 跳转到登录页
+        window.location.href = '/login'
       } else {
         // 其他错误
         console.error('请求错误:', data.message || '未知错误')
