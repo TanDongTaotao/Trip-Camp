@@ -6,8 +6,8 @@ const dotenv = require('dotenv')
 const path = require('path')
 
 function loadEnv() {
-    // nodemon/npm 运行时 cwd 默认是 server/，因此这里读取 server/.env
-    const envPath = path.join(process.cwd(), '.env')
+    // 使用__dirname来正确定位.env文件，无论从哪个目录运行命令
+    const envPath = path.join(__dirname, '../../.env')
     dotenv.config({ path: envPath })
 }
 

@@ -1,0 +1,21 @@
+/*
+  全局基础样式（管理端）：
+  - CSS Reset（margin/padding/box-sizing）
+  - body 背景与字体设置（配合 Ant Design 默认风格）
+*/
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f0f2f5;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}

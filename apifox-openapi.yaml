@@ -1,0 +1,949 @@
+openapi: 3.0.3
+info:
+  title: Trip-Camp 酒店项目 API
+  version: 1.0.0
+  description: |
+    面向：用户端（Taro/H5/小程序）、管理端（React+AntD）、服务端（Express+MongoDB）。
+
+    约定：
+    - Base URL：/api/v1
+    - 鉴权：Bearer Token（Authorization: Bearer <token>）
+    - 角色：user / merchant / admin
+servers:
+  - url: http://localhost:3000/api/v1
+    description: local
+
+tags:
+  - name: Auth
+    description: 登录注册与用户信息
+  - name: Hotels
+    description: 用户端酒店查询与详情
+  - name: Merchant
+    description: 商户后台酒店管理
+  - name: Admin
+    description: 管理员审核与发布
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: UNAUTHORIZED
+        message:
+          type: string
+          example: Token missing or invalid
+        details:
+          type: object
+          additionalProperties: true
+      required: [code, message]
+
+    UserPublic:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 65b8d9f1e8c2f10a1b2c3d4e
+        username:
+          type: string
+          example: alice
+        role:
+          type: string
+          enum: [user, merchant, admin]
+          example: user
+      required: [id, username, role]
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          $ref: '#/components/schemas/UserPublic'
+      required: [token, user]
+
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          example: alice
+        password:
+          type: string
+          minLength: 6
+          example: Password123!
+        role:
+          type: string
+          enum: [user, merchant]
+          example: user
+      required: [username, password, role]
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          example: alice
+        password:
+          type: string
+          example: Password123!
+      required: [username, password]
+
+    RoomType:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 豪华大床房
+        price:
+          type: number
+          example: 699
+        images:
+          type: array
+          items:
+            type: string
+            example: https://example.com/room-1.jpg
+        amenities:
+          type: array
+          items:
+            type: string
+            example: 免费WiFi
+      required: [name, price]
+
+    Nearby:
+      type: object
+      properties:
+        scenic:
+          type: array
+          items:
+            type: string
+        transport:
+          type: array
+          items:
+            type: string
+        mall:
+          type: array
+          items:
+            type: string
+
+    Discount:
+      type: object
+      properties:
+        title:
+          type: string
+          example: 节日8折
+        desc:
+          type: string
+          example: 春节期间全场8折
+      required: [title]
+
+    HotelCard:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 65b8da02e8c2f10a1b2c3d50
+        nameCn:
+          type: string
+          example: 上海外滩观景酒店
+        address:
+          type: string
+          example: 上海市黄浦区中山东一路1号
+        city:
+          type: string
+          example: 上海
+        star:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        type:
+          type: string
+          example: 酒店
+        minPrice:
+          type: number
+          example: 599
+        tags:
+          type: array
+          items:
+            type: string
+          example: [亲子, 豪华, 免费停车]
+        coverImage:
+          type: string
+          example: https://example.com/hotel-cover.jpg
+      required: [id, nameCn, address, city, star, type, minPrice]
+
+    HotelDetail:
+      allOf:
+        - $ref: '#/components/schemas/HotelCard'
+        - type: object
+          properties:
+            nameEn:
+              type: string
+              example: Bund View Hotel
+            openTime:
+              type: string
+              example: 2015
+            images:
+              type: array
+              items:
+                type: string
+              example:
+                - https://example.com/hotel-1.jpg
+                - https://example.com/hotel-2.jpg
+            bannerText:
+              type: string
+              example: 住在外滩，尽览浦江夜景
+            roomTypes:
+              type: array
+              items:
+                $ref: '#/components/schemas/RoomType'
+            nearby:
+              $ref: '#/components/schemas/Nearby'
+            discounts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Discount'
+
+    HotelsListResponse:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            $ref: '#/components/schemas/HotelCard'
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 126
+      required: [list, page, pageSize, total]
+
+    HotelDetailResponse:
+      type: object
+      properties:
+        hotel:
+          $ref: '#/components/schemas/HotelDetail'
+      required: [hotel]
+
+    MerchantHotel:
+      type: object
+      properties:
+        id:
+          type: string
+        ownerId:
+          type: string
+        auditStatus:
+          type: string
+          enum: [draft, pending, approved, rejected]
+        onlineStatus:
+          type: string
+          enum: [offline, online]
+        rejectReason:
+          type: string
+          nullable: true
+        deletedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      allOf:
+        - $ref: '#/components/schemas/HotelDetail'
+        - type: object
+          required: [auditStatus, onlineStatus]
+
+    HotelUpsertRequest:
+      type: object
+      properties:
+        nameCn:
+          type: string
+          example: 上海外滩观景酒店
+        nameEn:
+          type: string
+          example: Bund View Hotel
+        address:
+          type: string
+          example: 上海市黄浦区中山东一路1号
+        city:
+          type: string
+          example: 上海
+        star:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        type:
+          type: string
+          example: 酒店
+        minPrice:
+          type: number
+          example: 599
+        openTime:
+          type: string
+          example: 2015
+        images:
+          type: array
+          items:
+            type: string
+          example:
+            - https://example.com/hotel-1.jpg
+            - https://example.com/hotel-2.jpg
+        tags:
+          type: array
+          items:
+            type: string
+          example: [亲子, 豪华, 免费停车]
+        bannerText:
+          type: string
+          example: 住在外滩，尽览浦江夜景
+        roomTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoomType'
+        nearby:
+          $ref: '#/components/schemas/Nearby'
+        discounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Discount'
+      required: [nameCn, address, city, star, type, minPrice, openTime]
+
+    MerchantHotelsListResponse:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            $ref: '#/components/schemas/MerchantHotel'
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 12
+      required: [list, page, pageSize, total]
+
+    SubmitResponse:
+      type: object
+      properties:
+        auditStatus:
+          type: string
+          enum: [pending]
+          example: pending
+      required: [auditStatus]
+
+    AuditRequest:
+      type: object
+      oneOf:
+        - type: object
+          properties:
+            action:
+              type: string
+              enum: [approve]
+              example: approve
+          required: [action]
+        - type: object
+          properties:
+            action:
+              type: string
+              enum: [reject]
+              example: reject
+            reason:
+              type: string
+              example: 酒店地址缺少门牌号
+          required: [action, reason]
+
+    AuditResponse:
+      type: object
+      properties:
+        auditStatus:
+          type: string
+          enum: [approved, rejected]
+          example: approved
+        rejectReason:
+          type: string
+          nullable: true
+          example: null
+      required: [auditStatus]
+
+    PublishResponse:
+      type: object
+      properties:
+        onlineStatus:
+          type: string
+          enum: [online]
+          example: online
+      required: [onlineStatus]
+
+    OfflineResponse:
+      type: object
+      properties:
+        onlineStatus:
+          type: string
+          enum: [offline]
+          example: offline
+      required: [onlineStatus]
+
+    DeleteResponse:
+      type: object
+      properties:
+        deletedAt:
+          type: string
+          example: 2026-01-30T12:34:56.000Z
+      required: [deletedAt]
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: 注册（用户/商户）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              user:
+                value: { username: alice, password: Password123!, role: user }
+              merchant:
+                value: { username: bob_shop, password: Password123!, role: merchant }
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: 用户名已存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: 登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example: { username: alice, password: Password123! }
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: 用户名或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: 获取当前登录用户
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserPublic'
+                required: [user]
+        '401':
+          description: 未登录或 token 无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /hotels:
+    get:
+      tags: [Hotels]
+      summary: 酒店列表查询（用户端）
+      description: |
+        用于：首页查询按钮跳转列表页、列表页筛选排序、上拉加载更多/分页。
+        默认只返回已通过审核且已发布的酒店（auditStatus=approved 且 onlineStatus=online 且未删除）。
+      parameters:
+        - in: query
+          name: city
+          schema: { type: string }
+          example: 上海
+        - in: query
+          name: keyword
+          schema: { type: string }
+          example: 外滩
+        - in: query
+          name: checkIn
+          schema: { type: string }
+          example: 2026-02-20
+        - in: query
+          name: checkOut
+          schema: { type: string }
+          example: 2026-02-22
+        - in: query
+          name: tags
+          schema: { type: string }
+          description: 逗号分隔，例如 亲子,豪华
+          example: 亲子,豪华
+        - in: query
+          name: minPrice
+          schema: { type: number }
+          example: 300
+        - in: query
+          name: maxPrice
+          schema: { type: number }
+          example: 1200
+        - in: query
+          name: star
+          schema: { type: integer, minimum: 1, maximum: 5 }
+          example: 5
+        - in: query
+          name: type
+          schema: { type: string }
+          example: 酒店
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [priceAsc, priceDesc, starDesc]
+          example: priceAsc
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+          example: 1
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+          example: 10
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelsListResponse'
+
+  /hotels/{id}:
+    get:
+      tags: [Hotels]
+      summary: 酒店详情（用户端）
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+          example: 65b8da02e8c2f10a1b2c3d50
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelDetailResponse'
+        '404':
+          description: 酒店不存在或不可见
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /merchant/hotels:
+    get:
+      tags: [Merchant]
+      summary: 商户酒店列表（管理端-商户）
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: auditStatus
+          schema:
+            type: string
+            enum: [draft, pending, approved, rejected]
+        - in: query
+          name: onlineStatus
+          schema:
+            type: string
+            enum: [offline, online]
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantHotelsListResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: 非商户
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+    post:
+      tags: [Merchant]
+      summary: 新建酒店（管理端-商户）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HotelUpsertRequest'
+            example:
+              nameCn: 上海外滩观景酒店
+              nameEn: Bund View Hotel
+              address: 上海市黄浦区中山东一路1号
+              city: 上海
+              star: 5
+              type: 酒店
+              minPrice: 599
+              openTime: '2015'
+              images:
+                - https://example.com/hotel-1.jpg
+              tags:
+                - 豪华
+                - 免费停车
+              bannerText: 住在外滩，尽览浦江夜景
+              roomTypes:
+                - name: 豪华大床房
+                  price: 699
+                  amenities: [免费WiFi, 早餐]
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hotel:
+                    $ref: '#/components/schemas/MerchantHotel'
+                required: [hotel]
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: 非商户
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '422':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /merchant/hotels/{id}:
+    put:
+      tags: [Merchant]
+      summary: 编辑酒店（管理端-商户）
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HotelUpsertRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hotel:
+                    $ref: '#/components/schemas/MerchantHotel'
+                required: [hotel]
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: 非本人酒店或非商户
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: 酒店不存在
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /merchant/hotels/{id}/submit:
+    post:
+      tags: [Merchant]
+      summary: 提交审核（管理端-商户）
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: 非本人酒店或非商户
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: 状态不允许提交（例如已提交）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /admin/hotels:
+    get:
+      tags: [Admin]
+      summary: 酒店列表（管理端-管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: auditStatus
+          schema:
+            type: string
+            enum: [draft, pending, approved, rejected]
+        - in: query
+          name: onlineStatus
+          schema:
+            type: string
+            enum: [offline, online]
+        - in: query
+          name: keyword
+          schema: { type: string }
+          example: 外滩
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantHotelsListResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: 非管理员
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /admin/hotels/{id}/audit:
+    post:
+      tags: [Admin]
+      summary: 审核酒店（通过/拒绝）
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuditRequest'
+            examples:
+              approve:
+                value: { action: approve }
+              reject:
+                value: { action: reject, reason: 酒店地址缺少门牌号 }
+      responses:
+        '200':
+          description: 审核完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: 非管理员
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: 酒店不存在
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: 状态不允许审核（例如不在 pending）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /admin/hotels/{id}/publish:
+    post:
+      tags: [Admin]
+      summary: 发布酒店（上线）
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 发布成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: 非管理员
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: 未通过审核或状态不允许发布
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /admin/hotels/{id}/offline:
+    post:
+      tags: [Admin]
+      summary: 下线酒店
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 下线成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfflineResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: 非管理员
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /admin/hotels/{id}:
+    delete:
+      tags: [Admin]
+      summary: 删除酒店（软删除，可恢复）
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 删除成功（写入 deletedAt）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: 非管理员
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: 酒店不存在
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }

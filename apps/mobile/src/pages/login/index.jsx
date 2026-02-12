@@ -8,10 +8,12 @@ export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
-  // 阶段 0：登录成功后把 token 写入本地存储，后续请求会自动带上 Authorization
+  // 登录处理函数
   const handleLogin = async () => {
     const u = (username || '').trim()
     const p = password || ''
+
+    // 1. 简单的表单校验
     if (!u) {
       Taro.showToast({ title: '请输入用户名', icon: 'none' })
       return
@@ -22,14 +24,20 @@ export default function Login() {
     }
 
     try {
+      // 2. 调用登录接口
       const res = await request({
         url: '/auth/login',
         method: 'POST',
         data: { username: u, password: p },
       })
+
+      // 3. 登录成功处理
       if (res.token) {
+        // 核心：将 Token 存入 Storage，供 request.js 自动读取
         Taro.setStorageSync('token', res.token)
         Taro.showToast({ title: 'Login Success' })
+
+        // 延迟跳转回首页（Redirect 避免返回键回到登录页）
         setTimeout(() => {
           Taro.redirectTo({ url: '/pages/home/index' })
         }, 1000)
@@ -37,7 +45,8 @@ export default function Login() {
         Taro.showToast({ title: res.message || 'Login Failed', icon: 'none' })
       }
     } catch (e) {
-      Taro.showToast({ title: e?.message || 'Login Failed', icon: 'none' })
+      // request.js 已统一处理 Toast，这里仅做兜底或额外逻辑
+      console.error('Login error:', e)
     }
   }
 
