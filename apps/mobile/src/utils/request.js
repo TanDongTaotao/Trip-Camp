@@ -66,6 +66,10 @@ export const request = async (options) => {
     error.data = res.data
     throw error
   } catch (err) {
+    if (err && err.statusCode) {
+      throw err
+    }
+
     // 网络错误或其他异常
     const message = err && err.message ? err.message : 'Request Failed'
     Taro.showToast({ title: message, icon: 'none' })
