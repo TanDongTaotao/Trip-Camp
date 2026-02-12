@@ -1,3 +1,9 @@
+/*
+  注册页（阶段 1）：
+  - 支持选择角色注册：merchant / admin（后续可扩展 user）
+  - 调用 POST /api/v1/auth/register 获取 token 与 user
+  - 注册成功后直接进入登录态（写 localStorage 并跳转到 /）
+*/
 import { useState } from 'react'
 import { Card, Form, Input, Button, message, Typography, Select } from 'antd'
 import { LockOutlined, UserOutlined, TeamOutlined } from '@ant-design/icons'
@@ -15,13 +21,14 @@ const RegisterPage = () => {
   const handleSubmit = async (values) => {
     setLoading(true)
     try {
+      // 后端接口：POST /auth/register（请求体包含 role）
       const response = await api.post('/auth/register', values)
       const { token, user } = response
-      
+
       // 存储token和用户信息
       setToken(token)
       setUser(user)
-      
+
       message.success('注册成功')
       navigate('/')
     } catch (error) {
@@ -70,10 +77,10 @@ const RegisterPage = () => {
             </Select>
           </Form.Item>
           <Form.Item>
-            <Button 
-              type="primary" 
-              htmlType="submit" 
-              style={{ width: '100%' }} 
+            <Button
+              type="primary"
+              htmlType="submit"
+              style={{ width: '100%' }}
               loading={loading}
             >
               注册

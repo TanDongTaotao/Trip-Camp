@@ -1,10 +1,20 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu, Button, message } from 'antd'
-import { MenuUnfoldOutlined, MenuFoldOutlined, UserOutlined, LogoutOutlined, HomeOutlined, ShopOutlined, SettingOutlined, TeamOutlined } from '@ant-design/icons'
+import { MenuUnfoldOutlined, MenuFoldOutlined, LogoutOutlined, HomeOutlined, ShopOutlined, TeamOutlined } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
 import { clearAuth, getUser } from '../utils/auth'
 import api from '../utils/api'
 
+/*
+  后台基础布局（阶段 0/1）：
+  - 布局：Sider（菜单）+ Header（用户信息/登出）+ Content（子路由 Outlet）
+  - 登录态：
+    1) 首屏优先从 localStorage 取 user（快速渲染）
+    2) 再调用 GET /auth/me 校准用户信息与 role（联调后端）
+  - 角色控制（阶段 1）：
+    - 菜单根据 role 最小化展示（merchant 只见商户入口；admin 只见管理员入口）
+    - 路由根据 role 做最小兜底重定向（避免手动输入 URL 越权访问）
+*/
 const { Header, Sider, Content } = Layout
 
 const AdminLayout = () => {
@@ -21,11 +31,12 @@ const AdminLayout = () => {
       setUser(localUser)
       generateMenuItems(localUser.role)
     }
-    
+
     // 同时调用/auth/me接口获取最新的用户信息
     const fetchUserInfo = async () => {
       try {
         const response = await api.get('/auth/me')
+        // 用后端返回的 user 覆盖本地缓存，保证 role 等信息准确
         setUser(response.user)
         generateMenuItems(response.user.role)
       } catch (error) {
@@ -41,8 +52,33 @@ const AdminLayout = () => {
     fetchUserInfo()
   }, [navigate])
 
+  useEffect(() => {
+    const role = user?.role
+    if (!role) return
+
+    const path = location.pathname
+    const isMerchantOnlyPath = path.startsWith('/merchant')
+    const isAdminOnlyPath = path.startsWith('/admin')
+
+    // 角色越权兜底：防止用户手动输入 URL 访问不属于自己的页面
+    if (role === 'merchant' && isAdminOnlyPath) {
+      navigate('/merchant', { replace: true })
+      return
+    }
+
+    if (role === 'admin' && isMerchantOnlyPath) {
+      navigate('/admin', { replace: true })
+      return
+    }
+
+    if (role !== 'merchant' && role !== 'admin' && (isMerchantOnlyPath || isAdminOnlyPath)) {
+      navigate('/', { replace: true })
+    }
+  }, [location.pathname, navigate, user?.role])
+
   // 根据role生成菜单
   const generateMenuItems = (role) => {
+    // 公共入口：所有登录用户都可见
     const baseItems = [
       {
         key: '/',
@@ -53,6 +89,7 @@ const AdminLayout = () => {
 
     let roleItems = []
 
+    // 商户：仅展示商户相关入口
     if (role === 'merchant') {
       roleItems = [
         {
@@ -61,6 +98,7 @@ const AdminLayout = () => {
           label: '商户管理'
         }
       ]
+      // 管理员：仅展示管理员相关入口
     } else if (role === 'admin') {
       roleItems = [
         {
@@ -96,9 +134,9 @@ const AdminLayout = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        trigger={null} 
-        collapsible 
+      <Sider
+        trigger={null}
+        collapsible
         collapsed={collapsed}
         style={{ background: '#001529' }}
       >
@@ -121,9 +159,9 @@ const AdminLayout = () => {
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <span>欢迎，{user?.username || '管理员'} (role: {user?.role || '未知'})</span>
-            <Button 
-              type="text" 
-              icon={<LogoutOutlined />} 
+            <Button
+              type="text"
+              icon={<LogoutOutlined />}
               onClick={handleLogout}
             >
               登出

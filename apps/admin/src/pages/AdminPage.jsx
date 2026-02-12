@@ -1,3 +1,8 @@
+/*
+  管理员占位页（阶段 0/1）：
+  - 作为 admin 角色的功能入口占位
+  - 这里暂不实现具体业务（酒店审核/发布/下线），只用于验证路由与菜单控制已打通
+*/
 import { Typography, Card } from 'antd'
 
 const { Title, Paragraph } = Typography
