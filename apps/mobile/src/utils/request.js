@@ -18,11 +18,17 @@ function normalizePath(path) {
   return `/${path}`
 }
 
-// 统一请求封装：
-// - 自动携带 token（Authorization: Bearer <token>）
-// - 统一处理非 2xx 状态码（弹 Toast + 抛错）
+/**
+ * 统一请求封装
+ * @description
+ * 1. 自动处理 BaseURL
+ * 2. 自动携带 Token
+ * 3. 统一错误处理 (Toast + Throw)
+ */
 export const request = async (options) => {
   const { url, method = 'GET', data, header = {}, timeout = 15000 } = options || {}
+  
+  // 从本地存储获取 Token
   const token = Taro.getStorageSync('token')
 
   const finalHeader = {
@@ -30,6 +36,7 @@ export const request = async (options) => {
     ...header,
   }
 
+  // 如果存在 Token，自动注入 Authorization 头
   if (token && !finalHeader.Authorization) {
     finalHeader.Authorization = `Bearer ${token}`
   }
@@ -43,18 +50,23 @@ export const request = async (options) => {
       header: finalHeader,
     })
 
+    // 状态码 2xx 视为成功
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return res.data
     }
 
+    // 非 2xx 视为失败，统一处理
     const message =
       (res.data && (res.data.message || res.data.error)) || `HTTP ${res.statusCode}`
     Taro.showToast({ title: message, icon: 'none' })
+    
+    // 构造错误对象并抛出，便于调用方捕获
     const error = new Error(message)
     error.statusCode = res.statusCode
     error.data = res.data
     throw error
   } catch (err) {
+    // 网络错误或其他异常
     const message = err && err.message ? err.message : 'Request Failed'
     Taro.showToast({ title: message, icon: 'none' })
     throw err
