@@ -6,6 +6,7 @@
 
   阶段 0：完成基础布局、登录页、最小登录态与请求封装
   阶段 1：补齐注册闭环、/auth/me 打通，并基于 role 做菜单/路由最小控制
+  阶段 2：添加酒店列表/详情预览页面（可选加分项）
 */
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
@@ -14,6 +15,8 @@ import AdminLayout from './components/AdminLayout'
 import Dashboard from './pages/Dashboard'
 import MerchantPage from './pages/MerchantPage'
 import AdminPage from './pages/AdminPage'
+import HotelListPage from './pages/HotelListPage'
+import HotelDetailPage from './pages/HotelDetailPage'
 import PrivateRoute from './components/PrivateRoute'
 import './App.css'
 
@@ -32,6 +35,8 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="merchant" element={<MerchantPage />} />
             <Route path="admin" element={<AdminPage />} />
+            <Route path="hotel/list" element={<HotelListPage />} />
+            <Route path="hotel/detail/:id" element={<HotelDetailPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>
