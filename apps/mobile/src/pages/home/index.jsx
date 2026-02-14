@@ -8,6 +8,7 @@ import './index.scss'
 
 export default function Home() {
   const [userInfo, setUserInfo] = useState(null)
+  const [bannerHotelId, setBannerHotelId] = useState('')
   
   // 查询状态
   const [city, setCity] = useState('上海')
@@ -34,6 +35,23 @@ export default function Home() {
     
     const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     setDate([formatDate(today), formatDate(tomorrow)])
+  }, [])
+
+  useEffect(() => {
+    const fetchBannerHotel = async () => {
+      try {
+        const res = await request({
+          url: '/hotels',
+          method: 'GET',
+          data: { page: 1, pageSize: 1 },
+        })
+        const first = res && Array.isArray(res.list) && res.list.length > 0 ? res.list[0] : null
+        setBannerHotelId(first ? first.id : '')
+      } catch {
+        setBannerHotelId('')
+      }
+    }
+    fetchBannerHotel()
   }, [])
 
   // 检查登录态
@@ -76,6 +94,14 @@ export default function Home() {
     Taro.navigateTo({ url: `/pages/list/index?${queryString}` })
   }
 
+  const handleBannerClick = () => {
+    if (!bannerHotelId) {
+      Taro.showToast({ title: '暂无可跳转酒店', icon: 'none' })
+      return
+    }
+    Taro.navigateTo({ url: `/pages/detail/index?id=${bannerHotelId}&checkIn=${date[0]}&checkOut=${date[1]}` })
+  }
+
   const handleLogout = () => {
     Taro.removeStorageSync('token')
     setUserInfo(null)
@@ -87,12 +113,12 @@ export default function Home() {
       {/* 顶部 Banner */}
       <Swiper defaultValue={0} loop autoPlay>
         <SwiperItem>
-          <View style={{ height: '200px', background: '#1989fa', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '24px' }}>
+          <View onClick={handleBannerClick} style={{ height: '200px', background: '#1989fa', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '24px' }}>
             Trip Camp Hotel
           </View>
         </SwiperItem>
         <SwiperItem>
-          <View style={{ height: '200px', background: '#ff976a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '24px' }}>
+          <View onClick={handleBannerClick} style={{ height: '200px', background: '#ff976a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '24px' }}>
             Enjoy Your Stay
           </View>
         </SwiperItem>

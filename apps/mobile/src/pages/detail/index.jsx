@@ -49,7 +49,11 @@ export default function Detail() {
   }
 
   // 图片列表，如果没有则用封面图，再没有用默认图
-  const images = detail.images && detail.images.length > 0 ? detail.images : (detail.coverImage ? [detail.coverImage] : ['https://img12.360buyimg.com/imagetools/jfs/t1/196130/38/13621/2930/60c733bdEad3e90ac/251c5d836417d6d3.png'])
+  const rawImages = detail.images && detail.images.length > 0 ? detail.images : (detail.coverImage ? [detail.coverImage] : ['https://img12.360buyimg.com/imagetools/jfs/t1/196130/38/13621/2930/60c733bdEad3e90ac/251c5d836417d6d3.png'])
+  const images = rawImages.length === 1 ? [rawImages[0], rawImages[0]] : rawImages
+  const sortedRoomTypes = Array.isArray(detail.roomTypes)
+    ? [...detail.roomTypes].sort((a, b) => Number(a?.price) - Number(b?.price))
+    : []
 
   return (
     <View className='detail-page' style={{ paddingBottom: '80px', background: '#f5f5f5', minHeight: '100vh' }}>
@@ -57,9 +61,9 @@ export default function Detail() {
       <Swiper defaultValue={0} loop autoPlay height={200}>
         {images.map((img, idx) => (
           <SwiperItem key={idx}>
-            <Image 
-              src={img} 
-              style={{ width: '100%', height: '200px', objectFit: 'cover' }} 
+            <Image
+              src={img}
+              style={{ width: '100%', height: '200px', objectFit: 'cover' }}
               mode="aspectFill"
             />
           </SwiperItem>
@@ -70,15 +74,15 @@ export default function Detail() {
       <View style={{ background: '#fff', padding: '16px', marginBottom: '10px' }}>
         <View style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '4px' }}>{detail.nameCn}</View>
         <View style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>{detail.nameEn}</View>
-        
+
         <View style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
           <Rate value={detail.star} count={5} readOnly size={14} />
           <Text style={{ fontSize: '14px', color: '#ff9900', marginLeft: '8px', fontWeight: 'bold' }}>{detail.star}.0分</Text>
           <Tag type="primary" plain style={{ marginLeft: '12px' }}>{detail.type}</Tag>
         </View>
-        
+
         <Divider style={{ margin: '10px 0' }} />
-        
+
         <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <View style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
             <Location size={16} color="#666" />
@@ -89,7 +93,7 @@ export default function Detail() {
           </View>
         </View>
       </View>
-      
+
       {/* 设施服务 */}
       {detail.tags && detail.tags.length > 0 && (
         <View style={{ background: '#fff', padding: '16px', marginBottom: '10px' }}>
@@ -105,12 +109,12 @@ export default function Detail() {
       {/* 房型列表 */}
       <View style={{ background: '#fff', padding: '16px 16px 0 16px' }}>
         <View style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px' }}>房型预订</View>
-        
-        {detail.roomTypes && detail.roomTypes.length > 0 ? (
-          detail.roomTypes.map((room, idx) => (
+
+        {sortedRoomTypes.length > 0 ? (
+          sortedRoomTypes.map((room, idx) => (
             <View key={idx} style={{ display: 'flex', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #eee' }}>
-              <Image 
-                src={room.images && room.images.length > 0 ? room.images[0] : 'https://img12.360buyimg.com/imagetools/jfs/t1/147573/29/16034/8547/5fa0520dE99a806c9/91b99819777174e7.png'} 
+              <Image
+                src={room.images && room.images.length > 0 ? room.images[0] : 'https://img12.360buyimg.com/imagetools/jfs/t1/147573/29/16034/8547/5fa0520dE99a806c9/91b99819777174e7.png'}
                 style={{ width: '80px', height: '80px', borderRadius: '4px', marginRight: '10px' }}
                 mode="aspectFill"
               />
@@ -134,7 +138,7 @@ export default function Detail() {
           <View style={{ padding: '20px', textAlign: 'center', color: '#999' }}>暂无房型信息</View>
         )}
       </View>
-      
+
       {/* 底部操作栏 */}
       <View style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', padding: '10px 16px', display: 'flex', alignItems: 'center', boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' }}>
         <View style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: '20px' }}>

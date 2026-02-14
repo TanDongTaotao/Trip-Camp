@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { View, Image, ScrollView } from '@tarojs/components'
+import { View, Image, ScrollView, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { SearchBar, Tabs, Tag, Rate, Loading, Empty } from '@nutui/nutui-react-taro'
 import { request } from '../../utils/request'
