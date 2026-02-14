@@ -12,7 +12,7 @@ const config = {
   },
   sourceRoot: 'src',
   outputRoot: 'dist',
-  plugins: ['@tarojs/plugin-framework-react'],
+  plugins: ['@tarojs/plugin-framework-react', '@tarojs/plugin-html'],
   defineConstants: {
   },
   copy: {
