@@ -22,7 +22,7 @@ const HotelListPage = () => {
     setLoading(true)
     try {
       const response = await api.get('/hotels')
-      setHotels(response.data || response)
+      setHotels(response.list || [])
       message.success('获取酒店列表成功')
     } catch (error) {
       message.error('获取酒店列表失败：' + (error.response?.data?.message || error.message))
@@ -46,8 +46,13 @@ const HotelListPage = () => {
   const columns = [
     {
       title: '酒店名称',
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: 'nameCn',
+      key: 'nameCn',
+    },
+    {
+      title: '城市',
+      dataIndex: 'city',
+      key: 'city',
     },
     {
       title: '地址',
@@ -56,22 +61,15 @@ const HotelListPage = () => {
     },
     {
       title: '价格',
-      dataIndex: 'price',
-      key: 'price',
+      dataIndex: 'minPrice',
+      key: 'minPrice',
       render: (price) => `¥${price}/晚`,
     },
     {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        const statusMap = {
-          pending: '待审核',
-          published: '已发布',
-          offline: '已下线',
-        }
-        return statusMap[status] || status
-      },
+      title: '星级',
+      dataIndex: 'star',
+      key: 'star',
+      render: (star) => `${star}星`,
     },
     {
       title: '操作',

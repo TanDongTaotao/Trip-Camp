@@ -18,26 +18,32 @@ const HotelDetailPage = () => {
   const navigate = useNavigate()
   const { id } = useParams()
 
-  // 获取酒店详情
-  const fetchHotelDetail = async () => {
-    if (!id) return
-    
-    setLoading(true)
-    try {
-      const response = await api.get(`/hotels/${id}`)
-      setHotel(response.data || response)
-      message.success('获取酒店详情成功')
-    } catch (error) {
-      message.error('获取酒店详情失败：' + (error.response?.data?.message || error.message))
-      setHotel(null)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // 页面加载时获取酒店详情
   useEffect(() => {
+    if (!id) return
+    let active = true
+    const fetchHotelDetail = async () => {
+      setLoading(true)
+      try {
+        const response = await api.get(`/hotels/${id}`)
+        if (active) {
+          setHotel(response.hotel || null)
+          message.success('获取酒店详情成功')
+        }
+      } catch (error) {
+        if (active) {
+          message.error('获取酒店详情失败：' + (error.response?.data?.message || error.message))
+          setHotel(null)
+        }
+      } finally {
+        if (active) {
+          setLoading(false)
+        }
+      }
+    }
     fetchHotelDetail()
+    return () => {
+      active = false
+    }
   }, [id])
 
   // 返回酒店列表
@@ -73,61 +79,65 @@ const HotelDetailPage = () => {
   return (
     <div>
       <Title level={2}>酒店详情预览</Title>
-      
+
       {/* 操作栏 */}
-      <Button 
-        style={{ marginBottom: 24 }} 
-        icon={<ArrowLeftOutlined />} 
+      <Button
+        style={{ marginBottom: 24 }}
+        icon={<ArrowLeftOutlined />}
         onClick={handleBack}
       >
         返回列表
       </Button>
-      
+
       {/* 酒店基本信息 */}
       <Card style={{ marginBottom: 24 }}>
-        <Title level={3}>{hotel.name}</Title>
+        <Title level={3}>
+          {hotel.nameCn}
+          {hotel.nameEn ? ` (${hotel.nameEn})` : ''}
+        </Title>
         <Descriptions bordered column={2}>
+          <Descriptions.Item label="城市">{hotel.city}</Descriptions.Item>
           <Descriptions.Item label="地址">{hotel.address}</Descriptions.Item>
-          <Descriptions.Item label="价格">¥{hotel.price}/晚</Descriptions.Item>
-          <Descriptions.Item label="状态">
-            {{
-              pending: '待审核',
-              published: '已发布',
-              offline: '已下线',
-            }[hotel.status] || hotel.status}
+          <Descriptions.Item label="星级">{hotel.star}星</Descriptions.Item>
+          <Descriptions.Item label="类型">{hotel.type}</Descriptions.Item>
+          <Descriptions.Item label="起步价">¥{hotel.minPrice}/晚</Descriptions.Item>
+          <Descriptions.Item label="开业时间">{hotel.openTime}</Descriptions.Item>
+          <Descriptions.Item label="标签">
+            {Array.isArray(hotel.tags) && hotel.tags.length > 0 ? hotel.tags.join(' / ') : '无'}
           </Descriptions.Item>
-          <Descriptions.Item label="创建时间">
-            {hotel.createdAt ? new Date(hotel.createdAt).toLocaleString() : '未知'}
+          <Descriptions.Item label="房型数量">
+            {Array.isArray(hotel.roomTypes) ? hotel.roomTypes.length : 0}
           </Descriptions.Item>
-          <Descriptions.Item label="更新时间">
-            {hotel.updatedAt ? new Date(hotel.updatedAt).toLocaleString() : '未知'}
-          </Descriptions.Item>
-          <Descriptions.Item label="商户ID">{hotel.merchantId}</Descriptions.Item>
         </Descriptions>
       </Card>
-      
+
       {/* 酒店图片 */}
       {hotel.images && hotel.images.length > 0 && (
         <Card style={{ marginBottom: 24 }}>
           <Title level={4}>酒店图片</Title>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             {hotel.images.map((image, index) => (
-              <Image 
-                key={index} 
-                src={image} 
-                alt={`${hotel.name} - 图片 ${index + 1}`} 
-                width={200} 
+              <Image
+                key={index}
+                src={image}
+                alt={`${hotel.nameCn} - 图片 ${index + 1}`}
+                width={200}
               />
             ))}
           </div>
         </Card>
       )}
-      
-      {/* 酒店描述 */}
-      {hotel.description && (
-        <Card>
-          <Title level={4}>酒店描述</Title>
-          <Paragraph>{hotel.description}</Paragraph>
+
+      {Array.isArray(hotel.roomTypes) && hotel.roomTypes.length > 0 && (
+        <Card style={{ marginBottom: 24 }}>
+          <Title level={4}>房型列表</Title>
+          <Descriptions bordered column={1}>
+            {hotel.roomTypes.map((room, index) => (
+              <Descriptions.Item key={index} label={`${room.name} - ¥${room.price}/晚`}>
+                {Array.isArray(room.amenities) && room.amenities.length > 0 ? room.amenities.join(' / ') : '无'}
+              </Descriptions.Item>
+            ))}
+          </Descriptions>
         </Card>
       )}
     </div>

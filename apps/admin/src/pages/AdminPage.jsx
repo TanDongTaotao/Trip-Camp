@@ -5,7 +5,7 @@
   - 阶段 3：实现具体业务逻辑
 */
 import { Typography, Card, Button, Space } from 'antd'
-import { CheckCircleOutlined, PublishOutlined, CloseCircleOutlined, TableOutlined } from '@ant-design/icons'
+import { CheckCircleOutlined, UploadOutlined, CloseCircleOutlined, TableOutlined } from '@ant-design/icons'
 
 const { Title, Paragraph } = Typography
 
@@ -13,7 +13,7 @@ const AdminPage = () => {
   return (
     <div>
       <Title level={2}>管理员管理页面</Title>
-      
+
       {/* 阶段 3 入口占位 */}
       <Card style={{ marginBottom: 24 }}>
         <Title level={4}>酒店审核管理（阶段 3 功能入口）</Title>
@@ -22,14 +22,14 @@ const AdminPage = () => {
             <Button type="primary" icon={<CheckCircleOutlined />} size="large" style={{ width: 200 }}>
               审核酒店
             </Button>
-            <Button icon={<PublishOutlined />} size="large" style={{ width: 200 }}>
+            <Button icon={<UploadOutlined />} size="large" style={{ width: 200 }}>
               发布酒店
             </Button>
             <Button icon={<CloseCircleOutlined />} size="large" style={{ width: 200 }}>
               下线酒店
             </Button>
           </Space>
-          
+
           <Card style={{ marginTop: 16 }}>
             <Title level={5}>审核列表（阶段 3）</Title>
             <Paragraph>
@@ -39,7 +39,7 @@ const AdminPage = () => {
               查看审核列表
             </Button>
           </Card>
-          
+
           <Card style={{ marginTop: 16 }}>
             <Title level={5}>已发布列表（阶段 3）</Title>
             <Paragraph>
@@ -51,7 +51,7 @@ const AdminPage = () => {
           </Card>
         </Space>
       </Card>
-      
+
       {/* 页面说明 */}
       <Card>
         <Paragraph>
