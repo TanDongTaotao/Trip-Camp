@@ -1,6 +1,6 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { Layout, Menu, Button, message } from 'antd'
-import { MenuUnfoldOutlined, MenuFoldOutlined, LogoutOutlined, HomeOutlined, ShopOutlined, TeamOutlined } from '@ant-design/icons'
+import { MenuUnfoldOutlined, MenuFoldOutlined, LogoutOutlined, HomeOutlined, ShopOutlined, TeamOutlined, TableOutlined } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
 import { clearAuth, getUser } from '../utils/auth'
 import api from '../utils/api'
@@ -84,6 +84,11 @@ const AdminLayout = () => {
         key: '/',
         icon: <HomeOutlined />,
         label: '仪表盘'
+      },
+      {
+        key: '/hotel/list',
+        icon: <TableOutlined />,
+        label: '酒店列表预览'
       }
     ]
 
