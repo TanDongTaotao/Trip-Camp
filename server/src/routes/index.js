@@ -4,6 +4,8 @@
 const express = require('express')
 const { authRouter } = require('./auth')
 const { hotelsRouter } = require('./hotels')
+const { merchantRouter } = require('./merchant')
+const { adminRouter } = require('./admin')
 
 const router = express.Router()
 
@@ -12,5 +14,11 @@ router.use('/auth', authRouter)
 
 // 用户端酒店查询：/api/v1/hotels*
 router.use('/hotels', hotelsRouter)
+
+// 商户端酒店管理：/api/v1/merchant/hotels*
+router.use('/merchant', merchantRouter)
+
+// 管理员端酒店管理：/api/v1/admin/hotels*
+router.use('/admin', adminRouter)
 
 module.exports = { apiRouter: router }

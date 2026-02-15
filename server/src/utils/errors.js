@@ -22,6 +22,22 @@ function toErrorResponse(err) {
     }
   }
 
+  // Mongoose 校验错误：统一转成 422，保持 { code, message, details? } 结构稳定
+  if (err && err.name === 'ValidationError' && err.errors && typeof err.errors === 'object') {
+    const fields = {}
+    for (const [path, v] of Object.entries(err.errors)) {
+      fields[path] = v && v.message ? v.message : 'Invalid value'
+    }
+    return {
+      status: 422,
+      body: {
+        code: 'VALIDATION_ERROR',
+        message: 'Validation error',
+        details: { fields },
+      },
+    }
+  }
+
   return {
     status: 500,
     body: {
