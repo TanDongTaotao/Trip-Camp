@@ -9,6 +9,7 @@ import './index.scss'
 export default function Home() {
   const [userInfo, setUserInfo] = useState(null)
   const [bannerHotelId, setBannerHotelId] = useState('')
+  const [searching, setSearching] = useState(false)
   
   // 查询状态
   const [city, setCity] = useState('上海')
@@ -88,6 +89,7 @@ export default function Home() {
   })
 
   const handleSearch = () => {
+    if (searching) return
     if (!city) {
       Taro.showToast({ title: '请选择目的地', icon: 'none' })
       return
@@ -118,8 +120,10 @@ export default function Home() {
       .filter(key => params[key])
       .map(key => `${key}=${encodeURIComponent(params[key])}`)
       .join('&')
-      
+
+    setSearching(true)
     Taro.navigateTo({ url: `/pages/list/index?${queryString}` })
+    setTimeout(() => setSearching(false), 800)
   }
 
   const handleBannerClick = () => {
@@ -210,8 +214,8 @@ export default function Home() {
         </View>
 
         {/* 查询按钮 */}
-        <Button type="primary" block size="large" onClick={handleSearch} style={{ marginTop: '16px' }}>
-          查找酒店
+        <Button type="primary" block size="large" onClick={handleSearch} disabled={searching} style={{ marginTop: '16px' }}>
+          {searching ? '跳转中...' : '查找酒店'}
         </Button>
       </View>
 

@@ -7,9 +7,11 @@ import './index.scss'
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [loggingIn, setLoggingIn] = useState(false)
 
   // 登录处理函数
   const handleLogin = async () => {
+    if (loggingIn) return
     const u = (username || '').trim()
     const p = password || ''
     
@@ -24,6 +26,7 @@ export default function Login() {
     }
 
     try {
+      setLoggingIn(true)
       // 2. 调用登录接口
       const res = await request({
         url: '/auth/login',
@@ -47,6 +50,8 @@ export default function Login() {
     } catch (e) {
       // request.js 已统一处理 Toast，这里仅做兜底或额外逻辑
       console.error('Login error:', e)
+    } finally {
+      setLoggingIn(false)
     }
   }
 
@@ -70,7 +75,9 @@ export default function Login() {
           onInput={(e) => setPassword(e.detail.value)}
         />
       </View>
-      <Button className='btn' onClick={handleLogin}>Login</Button>
+      <Button className='btn' onClick={handleLogin} disabled={loggingIn}>
+        {loggingIn ? 'Logging in...' : 'Login'}
+      </Button>
     </View>
   )
 }

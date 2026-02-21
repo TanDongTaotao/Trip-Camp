@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { View, Image, ScrollView, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { SearchBar, Tabs, Tag, Rate, Loading, Empty, Skeleton } from '@nutui/nutui-react-taro'
@@ -14,7 +14,9 @@ export default function List() {
   const [sort, setSort] = useState('') // priceAsc, priceDesc
   const [initialLoading, setInitialLoading] = useState(false)
   const [error, setError] = useState(null)
-  
+  const requestSeqRef = useRef(0)
+  const inFlightRef = useRef(false)
+
   // 查询参数
   const [queryParams, setQueryParams] = useState({
     city: '',
@@ -40,13 +42,15 @@ export default function List() {
   }, [])
 
   const fetchList = async (pageNum, cityStr, keyStr, starVal, sortVal, tagsStr) => {
-    if (loading) return
+    if (inFlightRef.current && pageNum !== 1) return
+    const seq = ++requestSeqRef.current
+    inFlightRef.current = true
     if (pageNum === 1) {
       setInitialLoading(true)
     }
     setLoading(true)
     setError(null)
-    
+
     try {
       const res = await request({
         url: '/hotels',
@@ -61,7 +65,8 @@ export default function List() {
           tags: tagsStr
         }
       })
-      
+
+      if (seq !== requestSeqRef.current) return
       if (res.list) {
         if (pageNum === 1) {
           setList(res.list)
@@ -77,13 +82,17 @@ export default function List() {
         setPage(pageNum)
       }
     } catch (e) {
+      if (seq !== requestSeqRef.current) return
       console.error(e)
       setError(e)
       Taro.showToast({ title: '加载失败', icon: 'none' })
     } finally {
-      setLoading(false)
-      if (pageNum === 1) {
-        setInitialLoading(false)
+      if (seq === requestSeqRef.current) {
+        inFlightRef.current = false
+        setLoading(false)
+        if (pageNum === 1) {
+          setInitialLoading(false)
+        }
       }
     }
   }
@@ -111,10 +120,10 @@ export default function List() {
     <View className='list-page' style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       {/* 顶部搜索条回填 */}
       <View style={{ background: '#fff', padding: '8px' }}>
-        <SearchBar 
-          shape="round" 
-          placeholder={`${decodeURIComponent(queryParams.city)} | ${decodeURIComponent(queryParams.checkIn)} 入住`} 
-          readOnly 
+        <SearchBar
+          shape="round"
+          placeholder={`${decodeURIComponent(queryParams.city)} | ${decodeURIComponent(queryParams.checkIn)} 入住`}
+          readOnly
           onClick={() => Taro.navigateBack()}
         />
       </View>
@@ -139,10 +148,11 @@ export default function List() {
       )}
 
       {/* 酒店列表 */}
-      <ScrollView 
-        scrollY 
-        style={{ flex: 1 }} 
+      <ScrollView
+        scrollY
+        style={{ flex: 1 }}
         onScrollToLower={handleScrollToLower}
+        lowerThreshold={80}
       >
         {initialLoading && list.length === 0 ? (
           <View style={{ padding: '10px' }}>
@@ -169,19 +179,19 @@ export default function List() {
         ) : list.length > 0 ? (
           <View style={{ padding: '10px' }}>
             {list.map(item => (
-              <View 
-                key={item.id} 
+              <View
+                key={item.id}
                 style={{ background: '#fff', marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', display: 'flex' }}
                 hoverStyle={{ opacity: 0.9 }}
                 onClick={() => Taro.navigateTo({ url: `/pages/detail/index?id=${item.id}&checkIn=${queryParams.checkIn}&checkOut=${queryParams.checkOut}` })}
               >
                 {/* 左侧图片 */}
-                <Image 
-                  src={item.coverImage || 'https://img12.360buyimg.com/imagetools/jfs/t1/196130/38/13621/2930/60c733bdEad3e90ac/251c5d836417d6d3.png'} 
+                <Image
+                  src={item.coverImage || 'https://img12.360buyimg.com/imagetools/jfs/t1/196130/38/13621/2930/60c733bdEad3e90ac/251c5d836417d6d3.png'}
                   style={{ width: '120px', height: '120px', objectFit: 'cover' }}
                   mode="aspectFill"
                 />
-                
+
                 {/* 右侧信息 */}
                 <View style={{ flex: 1, padding: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <View>
@@ -192,7 +202,7 @@ export default function List() {
                     </View>
                     <View style={{ fontSize: '12px', color: '#666' }}>{item.address}</View>
                   </View>
-                  
+
                   <View style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                     {item.tags && item.tags.length > 0 && (
                       <View style={{ display: 'flex' }}>
@@ -209,7 +219,7 @@ export default function List() {
                 </View>
               </View>
             ))}
-            
+
             {/* 底部加载状态 */}
             <View style={{ padding: '10px', textAlign: 'center', color: '#999' }}>
               {loading ? <Loading>加载中...</Loading> : (hasMore ? '上拉加载更多' : '没有更多了')}
