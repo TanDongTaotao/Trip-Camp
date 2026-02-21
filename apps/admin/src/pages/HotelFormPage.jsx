@@ -27,6 +27,17 @@ const HotelFormPage = () => {
   // 房型状态
   const [roomTypes, setRoomTypes] = useState([])
 
+  const parseListInput = (value) => {
+    if (Array.isArray(value)) {
+      return value.map(item => String(item || '').trim()).filter(Boolean)
+    }
+    if (typeof value !== 'string') return []
+    return value
+      .split(/[\n,]/)
+      .map(item => item.trim())
+      .filter(Boolean)
+  }
+
   // 加载酒店数据
   const loadHotelData = useCallback(async () => {
     setLoading(true)
@@ -38,8 +49,12 @@ const HotelFormPage = () => {
         navigate('/merchant/hotels', { replace: true })
         return
       }
-      const { roomTypes: hotelRoomTypes, ...rest } = hotel
-      form.setFieldsValue(rest)
+      const { roomTypes: hotelRoomTypes, images, coverImage, ...rest } = hotel
+      form.setFieldsValue({
+        ...rest,
+        images: Array.isArray(images) ? images.join(',') : '',
+        coverImage: coverImage || ''
+      })
       setRoomTypes(Array.isArray(hotelRoomTypes) ? hotelRoomTypes : [])
     } catch (error) {
       message.error('加载酒店数据失败')
@@ -77,6 +92,12 @@ const HotelFormPage = () => {
 
   // 提交表单
   const handleSubmit = async (values) => {
+    const hotelImages = parseListInput(values.images)
+    const coverImage = (values.coverImage || '').trim()
+    if (hotelImages.length === 0) {
+      message.error('请至少添加一张酒店图片')
+      return
+    }
     // 验证房型
     if (roomTypes.length === 0) {
       message.error('至少需要添加一个房型')
@@ -92,12 +113,18 @@ const HotelFormPage = () => {
         message.error('房型价格不能为负数')
         return
       }
+      if (!Array.isArray(room.images) || room.images.length === 0) {
+        message.error('每个房型至少需要一张图片')
+        return
+      }
     }
 
     setSubmitLoading(true)
     try {
       const hotelData = {
         ...values,
+        coverImage: coverImage || undefined,
+        images: hotelImages,
         roomTypes,
       }
 
@@ -122,6 +149,12 @@ const HotelFormPage = () => {
 
   // 提交审核
   const handleSubmitAudit = async (values) => {
+    const hotelImages = parseListInput(values.images)
+    const coverImage = (values.coverImage || '').trim()
+    if (hotelImages.length === 0) {
+      message.error('请至少添加一张酒店图片')
+      return
+    }
     // 验证房型
     if (roomTypes.length === 0) {
       message.error('至少需要添加一个房型')
@@ -137,12 +170,18 @@ const HotelFormPage = () => {
         message.error('房型价格不能为负数')
         return
       }
+      if (!Array.isArray(room.images) || room.images.length === 0) {
+        message.error('每个房型至少需要一张图片')
+        return
+      }
     }
 
     setSubmitLoading(true)
     try {
       const hotelData = {
         ...values,
+        coverImage: coverImage || undefined,
+        images: hotelImages,
         roomTypes,
       }
 
@@ -265,6 +304,22 @@ const HotelFormPage = () => {
               >
                 <TextArea rows={4} placeholder="请输入酒店简介" />
               </Form.Item>
+
+              <Form.Item
+                label="酒店缩略图"
+                name="coverImage"
+                extra="不填会自动使用轮播图第一张作为缩略图"
+              >
+                <Input placeholder="请输入缩略图URL" />
+              </Form.Item>
+
+              <Form.Item
+                label="酒店轮播图"
+                name="images"
+                rules={[{ required: true, message: '请至少添加一张轮播图' }]}
+              >
+                <TextArea rows={3} placeholder="请输入图片URL，多个用逗号或换行分隔" />
+              </Form.Item>
             </Space>
           </Card>
 
@@ -334,6 +389,19 @@ const HotelFormPage = () => {
                           placeholder="请输入房型设施，多个设施用逗号分隔"
                           value={room.amenities.join(',')}
                           onChange={(e) => handleRoomTypeChange(index, 'amenities', e.target.value.split(','))}
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        label="房型图片"
+                        fieldKey={`roomTypes[${index}].images`}
+                        fieldValue={room.images}
+                        rules={[{ required: true, message: '请至少添加一张房型图片' }]}
+                      >
+                        <Input
+                          placeholder="请输入图片URL，多个用逗号分隔"
+                          value={Array.isArray(room.images) ? room.images.join(',') : ''}
+                          onChange={(e) => handleRoomTypeChange(index, 'images', parseListInput(e.target.value))}
                         />
                       </Form.Item>
                     </Space>

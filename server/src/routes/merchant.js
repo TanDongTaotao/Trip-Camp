@@ -78,6 +78,13 @@ function validateRoomTypes(roomTypes) {
         details: { field: 'roomTypes.price' },
       }
     }
+    if (!Array.isArray(rt.images) || rt.images.length === 0) {
+      return {
+        ok: false,
+        message: 'Invalid roomTypes',
+        details: { field: 'roomTypes.images' },
+      }
+    }
   }
 
   return { ok: true, value: normalized }
@@ -172,6 +179,10 @@ function pickUpdatableFields(body) {
     }
   }
 
+  if (updates.images && updates.images.length > 0 && !updates.coverImage) {
+    updates.coverImage = updates.images[0]
+  }
+
   return updates
 }
 
@@ -194,6 +205,15 @@ function assertRequiredOnCreate(payload) {
       code: 'VALIDATION_ERROR',
       message: 'Invalid star',
       details: { field: 'star' },
+    })
+  }
+
+  if (!Array.isArray(payload.images) || payload.images.length === 0) {
+    throw new AppError({
+      status: 422,
+      code: 'VALIDATION_ERROR',
+      message: 'Missing images',
+      details: { field: 'images' },
     })
   }
 

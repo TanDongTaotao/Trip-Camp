@@ -9,7 +9,7 @@ import './index.scss'
 export default function Home() {
   const [bannerHotelId, setBannerHotelId] = useState('')
   const [searching, setSearching] = useState(false)
-  
+
   // 查询状态
   const [city, setCity] = useState('上海')
   const [showCityPicker, setShowCityPicker] = useState(false)
@@ -18,7 +18,7 @@ export default function Home() {
   const [keyword, setKeyword] = useState('')
   const [star, setStar] = useState(0) // 0 表示不限
   const [selectedTags, setSelectedTags] = useState([])
-  
+
   // 城市选项
   const cityOptions = [
     { text: '上海', value: '上海' },
@@ -44,7 +44,7 @@ export default function Home() {
     const today = new Date()
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
-    
+
     const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     setDate([formatDate(today), formatDate(tomorrow)])
   }, [])
@@ -92,7 +92,7 @@ export default function Home() {
       star: star > 0 ? star : '',
       tags: selectedTags.length > 0 ? selectedTags.join(',') : ''
     }
-    
+
     // 构建 query string
     const queryString = Object.keys(params)
       .filter(key => params[key])
@@ -130,9 +130,9 @@ export default function Home() {
 
       {/* 查询表单区域 */}
       <View style={{ margin: '16px', padding: '16px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }}>
-        
+
         {/* 城市选择 */}
-        <Cell 
+        <Cell
           title={
             <View style={{ display: 'flex', alignItems: 'center' }}>
               <Location color="#1989fa" style={{ marginRight: '8px' }} />
@@ -146,14 +146,14 @@ export default function Home() {
         />
 
         {/* 日期选择 */}
-        <Cell 
+        <Cell
           title={
             <View style={{ display: 'flex', alignItems: 'center' }}>
               <DateIcon color="#1989fa" style={{ marginRight: '8px' }} />
-              <View>{date[0] && date[1] ? `${date[0]} 至 ${date[1]}` : '选择日期'}</View>
+              <View>{date[0] && date[1] ? `${date[0]} 至 ${date[1]}` : '请选择入住离店日期'}</View>
             </View>
           }
-          description={date[0] && date[1] ? `共 ${Math.ceil((new Date(date[1]) - new Date(date[0])) / (1000 * 60 * 60 * 24))} 晚` : '入住和离店日期'}
+          description={date[0] && date[1] ? `共 ${Math.ceil((new Date(date[1]) - new Date(date[0])) / (1000 * 60 * 60 * 24))} 晚` : '请选择入住离店日期'}
           extra={<ArrowRight />}
           align="center"
           onClick={() => setShowCalendar(true)}
@@ -161,14 +161,14 @@ export default function Home() {
 
         {/* 关键词输入 */}
         <View style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}>
-          <Input 
-            placeholder="关键字/位置/品牌/酒店名" 
+          <Input
+            placeholder="关键字/位置/品牌/酒店名"
             value={keyword}
             onChange={(val) => setKeyword(val)}
             style={{ padding: 0 }}
           />
         </View>
-        
+
         {/* 星级筛选 (简单实现) */}
         <View style={{ padding: '16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ fontSize: '14px', color: '#666' }}>星级要求</View>
@@ -211,10 +211,11 @@ export default function Home() {
         }}
         onClose={() => setShowCityPicker(false)}
       />
-      
+
       <Calendar
         visible={showCalendar}
         type="range"
+        title="请选择入住离店日期"
         startDate={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
         endDate={`${new Date().getFullYear() + 1}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
         defaultValue={date}
@@ -222,33 +223,33 @@ export default function Home() {
         onConfirm={(param) => {
           // param: [start, end]
           if (param && param.length >= 2) {
-             // 兼容处理：尝试获取第4个元素（字符串），如果不存在则直接使用
-             // NutUI Calendar 返回值可能是 [Date对象, Date对象] 或者 [Array, Array]
-             // 打印一下 param 结构有助于调试: console.log('Calendar confirm:', param)
-             
-             let startStr = ''
-             let endStr = ''
+            // 兼容处理：尝试获取第4个元素（字符串），如果不存在则直接使用
+            // NutUI Calendar 返回值可能是 [Date对象, Date对象] 或者 [Array, Array]
+            // 打印一下 param 结构有助于调试: console.log('Calendar confirm:', param)
 
-             // 情况1: param 是 [[y,m,d,str], [y,m,d,str]]
-             if (Array.isArray(param[0]) && param[0][3]) {
-                startStr = param[0][3]
-                endStr = param[1][3]
-             } 
-             // 情况2: param 是 [Date, Date] 或 [string, string]
-             else {
-                // 简单的日期格式化帮助函数
-                const fmt = (d) => {
-                  if (!d) return ''
-                  if (typeof d === 'string') return d
-                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-                }
-                startStr = fmt(param[0])
-                endStr = fmt(param[1])
-             }
+            let startStr = ''
+            let endStr = ''
 
-             if (startStr && endStr) {
-               setDate([startStr, endStr]) 
-             }
+            // 情况1: param 是 [[y,m,d,str], [y,m,d,str]]
+            if (Array.isArray(param[0]) && param[0][3]) {
+              startStr = param[0][3]
+              endStr = param[1][3]
+            }
+            // 情况2: param 是 [Date, Date] 或 [string, string]
+            else {
+              // 简单的日期格式化帮助函数
+              const fmt = (d) => {
+                if (!d) return ''
+                if (typeof d === 'string') return d
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+              }
+              startStr = fmt(param[0])
+              endStr = fmt(param[1])
+            }
+
+            if (startStr && endStr) {
+              setDate([startStr, endStr])
+            }
           }
         }}
       />

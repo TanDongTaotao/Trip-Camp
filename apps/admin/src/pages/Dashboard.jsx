@@ -4,16 +4,18 @@
   - 通过 GET /api/v1/auth/me 拉取最新用户信息（重点是 role）
   - 同时用 localStorage 的 user 做首屏兜底展示（减少白屏等待）
 */
-import { Typography, Card, Row, Col, message, Spin } from 'antd'
+import { Typography, Card, Row, Col, message, Spin, Button, Space } from 'antd'
 import { useEffect, useState } from 'react'
 import api from '../utils/api'
 import { getUser } from '../utils/auth'
+import { useNavigate } from 'react-router-dom'
 
 const { Title, Paragraph } = Typography
 
 const Dashboard = () => {
   const [userInfo, setUserInfo] = useState(null)
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     // 首先从localStorage获取用户信息
@@ -37,6 +39,22 @@ const Dashboard = () => {
 
     fetchUserInfo()
   }, [])
+
+  const handleQuickAddHotel = () => {
+    if (userInfo?.role === 'merchant') {
+      navigate('/merchant/hotel/add')
+      return
+    }
+    message.warning('当前角色无法录入酒店')
+  }
+
+  const handleViewAuditList = () => {
+    if (userInfo?.role === 'admin') {
+      navigate('/admin/audit')
+      return
+    }
+    message.warning('当前角色无法查看审核列表')
+  }
 
   return (
     <div>
@@ -77,8 +95,21 @@ const Dashboard = () => {
         </Col>
         <Col span={8}>
           <Card title="操作快捷" variant="borderless">
-            <p>快速添加酒店</p>
-            <p>查看审核列表</p>
+            {userInfo?.role === 'merchant' ? (
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Button type="primary" onClick={handleQuickAddHotel}>
+                  快速添加酒店
+                </Button>
+              </Space>
+            ) : userInfo?.role === 'admin' ? (
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Button onClick={handleViewAuditList}>
+                  查看审核列表
+                </Button>
+              </Space>
+            ) : (
+              <Paragraph type="secondary">暂无可用快捷入口</Paragraph>
+            )}
           </Card>
         </Col>
       </Row>
