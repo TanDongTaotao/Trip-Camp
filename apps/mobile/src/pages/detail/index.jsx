@@ -8,9 +8,20 @@ import './index.scss'
 
 export default function Detail() {
   const router = useRouter()
-  const { id } = router.params
+  const { id, checkIn, checkOut } = router.params
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  const calcNights = (startStr, endStr) => {
+    if (!startStr || !endStr) return ''
+    const start = new Date(startStr)
+    const end = new Date(endStr)
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return ''
+    const diff = end.getTime() - start.getTime()
+    const nights = Math.round(diff / (1000 * 60 * 60 * 24))
+    if (nights <= 0) return ''
+    return `${nights}晚`
+  }
 
   useEffect(() => {
     if (id) {
@@ -29,7 +40,15 @@ export default function Detail() {
       }
     } catch (e) {
       console.error(e)
-      Taro.showToast({ title: '获取详情失败', icon: 'none' })
+      if (e && e.statusCode === 404) {
+        Taro.showToast({ title: '酒店已下线或不存在', icon: 'none' })
+        setDetail(null)
+        setTimeout(() => {
+          Taro.navigateBack({ delta: 1 })
+        }, 1200)
+      } else {
+        Taro.showToast({ title: '获取详情失败', icon: 'none' })
+      }
     } finally {
       setLoading(false)
     }
@@ -54,6 +73,7 @@ export default function Detail() {
   const sortedRoomTypes = Array.isArray(detail.roomTypes)
     ? [...detail.roomTypes].sort((a, b) => Number(a?.price) - Number(b?.price))
     : []
+  const nightsText = calcNights(checkIn, checkOut)
 
   return (
     <View className='detail-page' style={{ paddingBottom: '80px', background: '#f5f5f5', minHeight: '100vh' }}>
@@ -93,6 +113,21 @@ export default function Detail() {
           </View>
         </View>
       </View>
+
+      {checkIn && checkOut && nightsText && (
+        <View style={{ background: '#fff', marginBottom: '10px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <View style={{ fontSize: '14px', color: '#666' }}>入住离店</View>
+            <View style={{ marginTop: '4px', fontSize: '14px', fontWeight: 'bold' }}>
+              {checkIn} 至 {checkOut}
+            </View>
+          </View>
+          <View style={{ textAlign: 'right' }}>
+            <View style={{ fontSize: '12px', color: '#999' }}>共 {nightsText}</View>
+            <View style={{ fontSize: '12px', color: '#1989fa', marginTop: '4px' }}>修改日期请返回列表页</View>
+          </View>
+        </View>
+      )}
 
       {/* 设施服务 */}
       {detail.tags && detail.tags.length > 0 && (

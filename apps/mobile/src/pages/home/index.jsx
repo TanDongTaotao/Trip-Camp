@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { View } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { Button, Swiper, SwiperItem, Cell, Calendar, Input, Picker, Rate } from '@nutui/nutui-react-taro'
+import { Button, Swiper, SwiperItem, Cell, Calendar, Input, Picker, Rate, Tag } from '@nutui/nutui-react-taro'
 import { ArrowRight, Search, Location, Date as DateIcon } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
 import './index.scss'
@@ -17,6 +17,7 @@ export default function Home() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [star, setStar] = useState(0) // 0 表示不限
+  const [selectedTags, setSelectedTags] = useState([])
   
   // 城市选项
   const cityOptions = [
@@ -26,6 +27,17 @@ export default function Home() {
     { text: '深圳', value: '深圳' },
     { text: '杭州', value: '杭州' },
   ]
+
+  const tagOptions = ['亲子优选', '商务出行', '情侣出行', '豪华高星']
+
+  const toggleTag = (tag) => {
+    setSelectedTags((prev) => {
+      if (prev.includes(tag)) {
+        return prev.filter((t) => t !== tag)
+      }
+      return [...prev, tag]
+    })
+  }
 
   // 初始化日期为今天和明天
   useEffect(() => {
@@ -76,13 +88,29 @@ export default function Home() {
   })
 
   const handleSearch = () => {
+    if (!city) {
+      Taro.showToast({ title: '请选择目的地', icon: 'none' })
+      return
+    }
+    if (!date[0] || !date[1]) {
+      Taro.showToast({ title: '请选择入住和离店日期', icon: 'none' })
+      return
+    }
+    const start = new Date(date[0])
+    const end = new Date(date[1])
+    if (end <= start) {
+      Taro.showToast({ title: '离店日期需晚于入住日期', icon: 'none' })
+      return
+    }
+
     // 跳转到列表页，携带参数
     const params = {
       city,
       checkIn: date[0],
       checkOut: date[1],
       keyword,
-      star: star > 0 ? star : ''
+      star: star > 0 ? star : '',
+      tags: selectedTags.length > 0 ? selectedTags.join(',') : ''
     }
     
     // 构建 query string
@@ -163,6 +191,22 @@ export default function Home() {
         <View style={{ padding: '16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ fontSize: '14px', color: '#666' }}>星级要求</View>
           <Rate value={star} onChange={(val) => setStar(val)} />
+        </View>
+
+        <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 8px' }}>
+          {tagOptions.map((tag) => {
+            const active = selectedTags.includes(tag)
+            return (
+              <Tag
+                key={tag}
+                type={active ? 'primary' : 'default'}
+                plain={!active}
+                onClick={() => toggleTag(tag)}
+              >
+                {tag}
+              </Tag>
+            )
+          })}
         </View>
 
         {/* 查询按钮 */}

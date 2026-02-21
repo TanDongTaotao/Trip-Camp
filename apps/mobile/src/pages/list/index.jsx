@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { View, Image, ScrollView, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { SearchBar, Tabs, Tag, Rate, Loading, Empty } from '@nutui/nutui-react-taro'
+import { SearchBar, Tabs, Tag, Rate, Loading, Empty, Skeleton } from '@nutui/nutui-react-taro'
 import { request } from '../../utils/request'
 import './index.scss'
 
@@ -12,6 +12,8 @@ export default function List() {
   const [hasMore, setHasMore] = useState(true)
   const [loading, setLoading] = useState(false)
   const [sort, setSort] = useState('') // priceAsc, priceDesc
+  const [initialLoading, setInitialLoading] = useState(false)
+  const [error, setError] = useState(null)
   
   // 查询参数
   const [queryParams, setQueryParams] = useState({
@@ -19,7 +21,8 @@ export default function List() {
     keyword: '',
     checkIn: '',
     checkOut: '',
-    star: ''
+    star: '',
+    tags: ''
   })
 
   // 初始化参数
@@ -30,16 +33,19 @@ export default function List() {
       keyword: params.keyword || '',
       checkIn: params.checkIn || '',
       checkOut: params.checkOut || '',
-      star: params.star || ''
+      star: params.star || '',
+      tags: params.tags || ''
     })
-    // 首次加载
-    fetchList(1, params.city, params.keyword, params.star, '')
+    fetchList(1, params.city, params.keyword, params.star, '', params.tags || '')
   }, [])
 
-  // 加载数据
-  const fetchList = async (pageNum, cityStr, keyStr, starVal, sortVal) => {
+  const fetchList = async (pageNum, cityStr, keyStr, starVal, sortVal, tagsStr) => {
     if (loading) return
+    if (pageNum === 1) {
+      setInitialLoading(true)
+    }
     setLoading(true)
+    setError(null)
     
     try {
       const res = await request({
@@ -51,7 +57,8 @@ export default function List() {
           city: cityStr,
           keyword: keyStr,
           star: starVal,
-          sort: sortVal
+          sort: sortVal,
+          tags: tagsStr
         }
       })
       
@@ -61,22 +68,30 @@ export default function List() {
         } else {
           setList(prev => [...prev, ...res.list])
         }
-        // 判断是否还有更多
-        setHasMore(res.list.length === 10)
+        const pageSize = 10
+        if (typeof res.total === 'number') {
+          setHasMore(pageNum * pageSize < res.total)
+        } else {
+          setHasMore(res.list.length === pageSize)
+        }
         setPage(pageNum)
       }
     } catch (e) {
       console.error(e)
+      setError(e)
       Taro.showToast({ title: '加载失败', icon: 'none' })
     } finally {
       setLoading(false)
+      if (pageNum === 1) {
+        setInitialLoading(false)
+      }
     }
   }
 
   // 上拉加载
   const handleScrollToLower = () => {
     if (hasMore && !loading) {
-      fetchList(page + 1, queryParams.city, queryParams.keyword, queryParams.star, sort)
+      fetchList(page + 1, queryParams.city, queryParams.keyword, queryParams.star, sort, queryParams.tags)
     }
   }
 
@@ -85,8 +100,12 @@ export default function List() {
     setSort(val)
     setPage(1)
     setHasMore(true)
-    fetchList(1, queryParams.city, queryParams.keyword, queryParams.star, val)
+    fetchList(1, queryParams.city, queryParams.keyword, queryParams.star, val, queryParams.tags)
   }
+
+  const activeTags = queryParams.tags
+    ? queryParams.tags.split(',').map((t) => t.trim()).filter(Boolean)
+    : []
 
   return (
     <View className='list-page' style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
@@ -109,18 +128,51 @@ export default function List() {
         </Tabs>
       </View>
 
+      {activeTags.length > 0 && (
+        <View style={{ background: '#fff', padding: '8px 12px', borderBottom: '1px solid #f5f5f5', display: 'flex', flexWrap: 'wrap' }}>
+          {activeTags.map((tag, idx) => (
+            <Tag key={idx} color="#E6F7FF" textColor="#1890ff" style={{ marginRight: '8px', marginBottom: '4px', fontSize: '10px' }}>
+              {tag}
+            </Tag>
+          ))}
+        </View>
+      )}
+
       {/* 酒店列表 */}
       <ScrollView 
         scrollY 
         style={{ flex: 1 }} 
         onScrollToLower={handleScrollToLower}
       >
-        {list.length > 0 ? (
+        {initialLoading && list.length === 0 ? (
+          <View style={{ padding: '10px' }}>
+            {[1, 2, 3].map((i) => (
+              <View key={i} style={{ background: '#fff', marginBottom: '10px', borderRadius: '8px', padding: '12px' }}>
+                <Skeleton rows={3} title animated />
+              </View>
+            ))}
+          </View>
+        ) : error && list.length === 0 ? (
+          <View style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+            <View style={{ marginBottom: '12px' }}>加载失败，请检查网络后重试</View>
+            <View>
+              <Text
+                style={{ color: '#1989fa' }}
+                onClick={() =>
+                  fetchList(1, queryParams.city, queryParams.keyword, queryParams.star, sort, queryParams.tags)
+                }
+              >
+                重新加载
+              </Text>
+            </View>
+          </View>
+        ) : list.length > 0 ? (
           <View style={{ padding: '10px' }}>
             {list.map(item => (
               <View 
                 key={item.id} 
                 style={{ background: '#fff', marginBottom: '10px', borderRadius: '8px', overflow: 'hidden', display: 'flex' }}
+                hoverStyle={{ opacity: 0.9 }}
                 onClick={() => Taro.navigateTo({ url: `/pages/detail/index?id=${item.id}&checkIn=${queryParams.checkIn}&checkOut=${queryParams.checkOut}` })}
               >
                 {/* 左侧图片 */}
