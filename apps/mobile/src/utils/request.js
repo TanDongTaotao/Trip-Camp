@@ -22,23 +22,14 @@ function normalizePath(path) {
  * 统一请求封装
  * @description
  * 1. 自动处理 BaseURL
- * 2. 自动携带 Token
- * 3. 统一错误处理 (Toast + Throw)
+ * 2. 统一错误处理 (Toast + Throw)
  */
 export const request = async (options) => {
   const { url, method = 'GET', data, header = {}, timeout = 15000 } = options || {}
   
-  // 从本地存储获取 Token
-  const token = Taro.getStorageSync('token')
-
   const finalHeader = {
     'Content-Type': 'application/json',
     ...header,
-  }
-
-  // 如果存在 Token，自动注入 Authorization 头
-  if (token && !finalHeader.Authorization) {
-    finalHeader.Authorization = `Bearer ${token}`
   }
 
   try {

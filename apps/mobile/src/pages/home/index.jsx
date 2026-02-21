@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { View } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import Taro from '@tarojs/taro'
 import { Button, Swiper, SwiperItem, Cell, Calendar, Input, Picker, Rate, Tag } from '@nutui/nutui-react-taro'
 import { ArrowRight, Search, Location, Date as DateIcon } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
 import './index.scss'
 
 export default function Home() {
-  const [userInfo, setUserInfo] = useState(null)
   const [bannerHotelId, setBannerHotelId] = useState('')
   const [searching, setSearching] = useState(false)
   
@@ -67,27 +66,6 @@ export default function Home() {
     fetchBannerHotel()
   }, [])
 
-  // 检查登录态
-  const checkAuth = async () => {
-    try {
-      // 静默检查，不报错
-      const token = Taro.getStorageSync('token')
-      if (!token) return
-      
-      const res = await request({ url: '/auth/me', method: 'GET' })
-      if (res.user) {
-        setUserInfo(res.user)
-      }
-    } catch (e) {
-      // Token 无效，清除
-      Taro.removeStorageSync('token')
-    }
-  }
-
-  useDidShow(() => {
-    checkAuth()
-  })
-
   const handleSearch = () => {
     if (searching) return
     if (!city) {
@@ -132,12 +110,6 @@ export default function Home() {
       return
     }
     Taro.navigateTo({ url: `/pages/detail/index?id=${bannerHotelId}&checkIn=${date[0]}&checkOut=${date[1]}` })
-  }
-
-  const handleLogout = () => {
-    Taro.removeStorageSync('token')
-    setUserInfo(null)
-    Taro.showToast({ title: '已退出登录', icon: 'success' })
   }
 
   return (
@@ -224,20 +196,6 @@ export default function Home() {
           {searching ? '跳转中...' : '查找酒店'}
         </Button>
       </View>
-
-      {/* 登录状态显示 (辅助调试) */}
-      {userInfo ? (
-        <View style={{ margin: '16px', padding: '16px', background: '#fff', borderRadius: '8px', textAlign: 'center' }}>
-          <View style={{ marginBottom: '10px' }}>欢迎回来, {userInfo.username} ({userInfo.role})</View>
-          <Button size="small" type="danger" onClick={handleLogout}>退出登录</Button>
-        </View>
-      ) : (
-        <View style={{ margin: '16px', textAlign: 'center' }}>
-          <Button size="small" variant="text" onClick={() => Taro.navigateTo({ url: '/pages/login/index' })}>
-            去登录 (Login)
-          </Button>
-        </View>
-      )}
 
       {/* 弹窗组件 */}
       <Picker

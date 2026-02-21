@@ -15,11 +15,9 @@ Trip-Camp 酒店项目 API 注释说明（Express 版）
 - 之后请求需要携带请求头：
   Authorization: Bearer <token>
 - token 建议放在：
-  - 用户端（Taro）：Taro.setStorageSync('token', token)
   - 管理端（Web）：localStorage/sessionStorage（更严谨可用 httpOnly cookie，但新手不建议第一周搞）
 
 2.3 角色（role）
-- user：普通用户（移动端/小程序）
 - merchant：商户（管理端，录入/编辑自己酒店）
 - admin：管理员（管理端，审核/发布/下线）
 

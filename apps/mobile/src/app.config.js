@@ -3,8 +3,7 @@ export default {
   pages: [
     'pages/home/index',
     'pages/list/index',
-    'pages/detail/index',
-    'pages/login/index'
+    'pages/detail/index'
   ],
   // 全局窗口配置（H5/小程序都会使用到其中一部分）
   window: {
