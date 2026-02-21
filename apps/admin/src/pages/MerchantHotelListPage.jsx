@@ -4,119 +4,75 @@
   - 支持查看酒店状态、编辑、提交审核等操作
   - 展示被拒原因
 */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Typography, Card, Button, Space, Table, Tag, message, Modal, Input, Select } from 'antd'
 import { EditOutlined, CheckOutlined, EyeOutlined, ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons'
 import api from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 
-const { Title, Paragraph } = Typography
+const { Title } = Typography
 const { Option } = Select
 
 const MerchantHotelListPage = () => {
   const navigate = useNavigate()
-  
+
   // 列表状态
   const [hotels, setHotels] = useState([])
   const [loading, setLoading] = useState(false)
   const [submitLoading, setSubmitLoading] = useState(false)
-  
+
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [total, setTotal] = useState(0)
-  
+
   // 筛选状态
   const [keyword, setKeyword] = useState('')
   const [auditStatus, setAuditStatus] = useState('')
-  
+
   // 详情模态框状态
   const [detailModalVisible, setDetailModalVisible] = useState(false)
   const [selectedHotel, setSelectedHotel] = useState(null)
-  
+
   // 加载酒店列表
-  const loadHotels = async () => {
+  const loadHotels = useCallback(async () => {
     setLoading(true)
     try {
-      // 这里需要根据后端API调整，暂时使用模拟数据
-      // const response = await api.get('/merchant/hotels', {
-      //   params: {
-      //     page: currentPage,
-      //     pageSize: pageSize,
-      //     keyword: keyword,
-      //     auditStatus: auditStatus
-      //   }
-      // })
-      // setHotels(response.data.list)
-      // setTotal(response.data.total)
-      
-      // 模拟数据
-      setHotels([
-        {
-          id: '1',
-          nameCn: '测试酒店1',
-          address: '北京市朝阳区测试路1号',
-          city: '北京',
-          star: 3,
-          minPrice: 200,
-          auditStatus: 'pending',
-          onlineStatus: 'offline',
-          rejectReason: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          nameCn: '测试酒店2',
-          address: '上海市浦东新区测试路2号',
-          city: '上海',
-          star: 4,
-          minPrice: 400,
-          auditStatus: 'rejected',
-          onlineStatus: 'offline',
-          rejectReason: '酒店信息不完整，请补充详细信息',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '3',
-          nameCn: '测试酒店3',
-          address: '广州市天河区测试路3号',
-          city: '广州',
-          star: 5,
-          minPrice: 600,
-          auditStatus: 'approved',
-          onlineStatus: 'online',
-          rejectReason: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+      const response = await api.get('/merchant/hotels', {
+        params: {
+          page: currentPage,
+          pageSize: pageSize,
+          keyword: keyword,
+          auditStatus: auditStatus
         }
-      ])
-      setTotal(3)
+      })
+      setHotels(response.list || [])
+      setTotal(typeof response.total === 'number' ? response.total : 0)
     } catch (error) {
       message.error('加载酒店列表失败')
       console.error('加载酒店列表失败:', error)
+      setHotels([])
+      setTotal(0)
     } finally {
       setLoading(false)
     }
-  }
-  
+  }, [auditStatus, currentPage, keyword, pageSize])
+
   // 初始加载
   useEffect(() => {
     loadHotels()
-  }, [currentPage, pageSize, keyword, auditStatus])
-  
+  }, [loadHotels])
+
   // 处理编辑
   const handleEdit = (hotel) => {
     navigate(`/merchant/hotel/edit/${hotel.id}`)
   }
-  
+
   // 处理提交审核
   const handleSubmitAudit = async (hotel) => {
     setSubmitLoading(true)
     try {
-      // 这里需要根据后端API调整
-      // await api.post(`/merchant/hotels/${hotel.id}/submit`)
+      await api.post(`/merchant/hotels/${hotel.id}/submit`)
       message.success('提交审核成功')
       // 重新加载列表
       loadHotels()
@@ -127,25 +83,25 @@ const MerchantHotelListPage = () => {
       setSubmitLoading(false)
     }
   }
-  
+
   // 处理查看详情
   const handleViewDetail = (hotel) => {
     setSelectedHotel(hotel)
     setDetailModalVisible(true)
   }
-  
+
   // 处理分页变化
   const handlePageChange = (page, size) => {
     setCurrentPage(page)
     setPageSize(size)
   }
-  
+
   // 处理搜索
   const handleSearch = () => {
     setCurrentPage(1)
     loadHotels()
   }
-  
+
   // 状态标签配置
   const auditStatusConfig = {
     pending: { color: 'blue', text: '待审核' },
@@ -153,12 +109,12 @@ const MerchantHotelListPage = () => {
     rejected: { color: 'red', text: '已拒绝' },
     draft: { color: 'orange', text: '草稿' }
   }
-  
+
   const onlineStatusConfig = {
     online: { color: 'green', text: '上线' },
     offline: { color: 'gray', text: '下线' }
   }
-  
+
   // 列配置
   const columns = [
     {
@@ -228,9 +184,9 @@ const MerchantHotelListPage = () => {
             </Button>
           )}
           {(record.auditStatus === 'draft' || record.auditStatus === 'rejected') && (
-            <Button 
-              type="primary" 
-              icon={<CheckOutlined />} 
+            <Button
+              type="primary"
+              icon={<CheckOutlined />}
               onClick={() => handleSubmitAudit(record)}
               loading={submitLoading}
             >
@@ -250,20 +206,20 @@ const MerchantHotelListPage = () => {
         </Button>
         <Title level={2}>我的酒店列表</Title>
       </Space>
-      
+
       {/* 搜索和筛选 */}
       <Card style={{ marginBottom: 24 }}>
         <Space size="middle" style={{ marginBottom: 16 }}>
-          <Input 
-            placeholder="搜索酒店名称、地址" 
+          <Input
+            placeholder="搜索酒店名称、地址"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             style={{ width: 300 }}
             prefix={<SearchOutlined />}
             onPressEnter={handleSearch}
           />
-          <Select 
-            placeholder="审核状态" 
+          <Select
+            placeholder="审核状态"
             value={auditStatus}
             onChange={setAuditStatus}
             style={{ width: 150 }}
@@ -279,13 +235,13 @@ const MerchantHotelListPage = () => {
           </Button>
         </Space>
       </Card>
-      
+
       {/* 酒店列表 */}
       <Card>
         <Table
           columns={columns}
           dataSource={hotels}
-          key="id"
+          rowKey="id"
           loading={loading}
           pagination={{
             current: currentPage,
@@ -300,7 +256,7 @@ const MerchantHotelListPage = () => {
           }}
         />
       </Card>
-      
+
       {/* 详情模态框 */}
       <Modal
         title="酒店详情"

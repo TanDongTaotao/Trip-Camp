@@ -30,15 +30,22 @@ export default function List() {
   // 初始化参数
   useEffect(() => {
     const params = router.params
+    const city = params.city ? decodeURIComponent(params.city) : ''
+    const keyword = params.keyword ? decodeURIComponent(params.keyword) : ''
+    const checkIn = params.checkIn ? decodeURIComponent(params.checkIn) : ''
+    const checkOut = params.checkOut ? decodeURIComponent(params.checkOut) : ''
+    const star = params.star ? decodeURIComponent(params.star) : ''
+    const tags = params.tags ? decodeURIComponent(params.tags) : ''
+
     setQueryParams({
-      city: params.city || '',
-      keyword: params.keyword || '',
-      checkIn: params.checkIn || '',
-      checkOut: params.checkOut || '',
-      star: params.star || '',
-      tags: params.tags || ''
+      city,
+      keyword,
+      checkIn,
+      checkOut,
+      star,
+      tags
     })
-    fetchList(1, params.city, params.keyword, params.star, '', params.tags || '')
+    fetchList(1, city, keyword, star, '', tags)
   }, [])
 
   const fetchList = async (pageNum, cityStr, keyStr, starVal, sortVal, tagsStr) => {

@@ -258,6 +258,27 @@ router.get('/hotels', requireAuth, requireRole('merchant'), async (req, res, nex
   }
 })
 
+// GET /api/v1/merchant/hotels/:id
+// - 查询商户自己的某个酒店（草稿/待审核/已拒绝等也可见）
+router.get('/hotels/:id', requireAuth, requireRole('merchant'), async (req, res, next) => {
+  try {
+    const ownerId = req.user && req.user.id
+    const id = assertObjectId(req.params.id)
+
+    const hotel = await Hotel.findOne({ _id: id, deletedAt: null })
+    if (!hotel) {
+      throw new AppError({ status: 404, code: 'NOT_FOUND', message: 'Hotel not found' })
+    }
+    if (String(hotel.ownerId || '') !== String(ownerId || '')) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Permission denied' })
+    }
+
+    res.json({ hotel: toHotelManageItem(hotel.toObject()) })
+  } catch (e) {
+    next(e)
+  }
+})
+
 // POST /api/v1/merchant/hotels
 // - 新建酒店（默认 draft + offline）
 router.post('/hotels', requireAuth, requireRole('merchant'), async (req, res, next) => {

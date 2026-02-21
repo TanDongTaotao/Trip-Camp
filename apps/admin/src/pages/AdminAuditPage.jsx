@@ -5,7 +5,7 @@
   - 实现审核动作（通过/拒绝）
   - 实现发布/下线功能
 */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Typography, Card, Button, Space, Table, Tag, message, Modal, Input, Select, Form } from 'antd'
 import { ArrowLeftOutlined, SearchOutlined, CheckCircleOutlined, CloseCircleOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
 import api from '../utils/api'
@@ -17,107 +17,64 @@ const { TextArea } = Input
 
 const AdminAuditPage = () => {
   const navigate = useNavigate()
-  
+
   // 列表状态
   const [hotels, setHotels] = useState([])
   const [loading, setLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
-  
+
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [total, setTotal] = useState(0)
-  
+
   // 筛选状态
   const [keyword, setKeyword] = useState('')
   const [auditStatus, setAuditStatus] = useState('')
   const [onlineStatus, setOnlineStatus] = useState('')
-  
+
   // 审核模态框状态
   const [auditModalVisible, setAuditModalVisible] = useState(false)
   const [auditAction, setAuditAction] = useState('') // approve 或 reject
   const [selectedHotel, setSelectedHotel] = useState(null)
-  
+
   // 拒绝原因表单
   const [rejectForm] = Form.useForm()
-  
+
   // 加载酒店列表
-  const loadHotels = async () => {
+  const loadHotels = useCallback(async () => {
     setLoading(true)
     try {
-      // 这里需要根据后端API调整，暂时使用模拟数据
-      // const response = await api.get('/admin/hotels', {
-      //   params: {
-      //     page: currentPage,
-      //     pageSize: pageSize,
-      //     keyword: keyword,
-      //     auditStatus: auditStatus,
-      //     onlineStatus: onlineStatus
-      //   }
-      // })
-      // setHotels(response.data.list)
-      // setTotal(response.data.total)
-      
-      // 模拟数据
-      setHotels([
-        {
-          id: '1',
-          nameCn: '测试酒店1',
-          address: '北京市朝阳区测试路1号',
-          city: '北京',
-          star: 3,
-          minPrice: 200,
-          auditStatus: 'pending',
-          onlineStatus: 'offline',
-          rejectReason: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          nameCn: '测试酒店2',
-          address: '上海市浦东新区测试路2号',
-          city: '上海',
-          star: 4,
-          minPrice: 400,
-          auditStatus: 'approved',
-          onlineStatus: 'offline',
-          rejectReason: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: '3',
-          nameCn: '测试酒店3',
-          address: '广州市天河区测试路3号',
-          city: '广州',
-          star: 5,
-          minPrice: 600,
-          auditStatus: 'approved',
-          onlineStatus: 'online',
-          rejectReason: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+      const response = await api.get('/admin/hotels', {
+        params: {
+          page: currentPage,
+          pageSize: pageSize,
+          keyword: keyword,
+          auditStatus: auditStatus,
+          onlineStatus: onlineStatus
         }
-      ])
-      setTotal(3)
+      })
+      setHotels(response.list || [])
+      setTotal(typeof response.total === 'number' ? response.total : 0)
     } catch (error) {
       message.error('加载酒店列表失败')
       console.error('加载酒店列表失败:', error)
+      setHotels([])
+      setTotal(0)
     } finally {
       setLoading(false)
     }
-  }
-  
+  }, [auditStatus, currentPage, keyword, onlineStatus, pageSize])
+
   // 初始加载
   useEffect(() => {
     loadHotels()
-  }, [currentPage, pageSize, keyword, auditStatus, onlineStatus])
-  
+  }, [loadHotels])
+
   // 处理审核
   const handleAudit = async () => {
     if (!selectedHotel) return
-    
+
     setActionLoading(true)
     try {
       let rejectReason = ''
@@ -125,13 +82,12 @@ const AdminAuditPage = () => {
         rejectReason = await rejectForm.validateFields(['rejectReason'])
         rejectReason = rejectReason.rejectReason
       }
-      
-      // 这里需要根据后端API调整
-      // await api.post(`/admin/hotels/${selectedHotel.id}/audit`, {
-      //   action: auditAction,
-      //   rejectReason: rejectReason
-      // })
-      
+
+      await api.post(`/admin/hotels/${selectedHotel.id}/audit`, {
+        action: auditAction,
+        rejectReason: rejectReason
+      })
+
       message.success(auditAction === 'approve' ? '审核通过成功' : '审核拒绝成功')
       setAuditModalVisible(false)
       // 重新加载列表
@@ -143,13 +99,12 @@ const AdminAuditPage = () => {
       setActionLoading(false)
     }
   }
-  
+
   // 处理发布
   const handlePublish = async (hotel) => {
     setActionLoading(true)
     try {
-      // 这里需要根据后端API调整
-      // await api.post(`/admin/hotels/${hotel.id}/publish`)
+      await api.post(`/admin/hotels/${hotel.id}/publish`)
       message.success('发布成功')
       // 重新加载列表
       loadHotels()
@@ -160,13 +115,12 @@ const AdminAuditPage = () => {
       setActionLoading(false)
     }
   }
-  
+
   // 处理下线
   const handleOffline = async (hotel) => {
     setActionLoading(true)
     try {
-      // 这里需要根据后端API调整
-      // await api.post(`/admin/hotels/${hotel.id}/offline`)
+      await api.post(`/admin/hotels/${hotel.id}/offline`)
       message.success('下线成功')
       // 重新加载列表
       loadHotels()
@@ -177,7 +131,7 @@ const AdminAuditPage = () => {
       setActionLoading(false)
     }
   }
-  
+
   // 打开审核模态框
   const openAuditModal = (hotel, action) => {
     setSelectedHotel(hotel)
@@ -185,19 +139,19 @@ const AdminAuditPage = () => {
     setAuditModalVisible(true)
     rejectForm.resetFields()
   }
-  
+
   // 处理分页变化
   const handlePageChange = (page, size) => {
     setCurrentPage(page)
     setPageSize(size)
   }
-  
+
   // 处理搜索
   const handleSearch = () => {
     setCurrentPage(1)
     loadHotels()
   }
-  
+
   // 状态标签配置
   const auditStatusConfig = {
     pending: { color: 'blue', text: '待审核' },
@@ -205,12 +159,12 @@ const AdminAuditPage = () => {
     rejected: { color: 'red', text: '已拒绝' },
     draft: { color: 'orange', text: '草稿' }
   }
-  
+
   const onlineStatusConfig = {
     online: { color: 'green', text: '上线' },
     offline: { color: 'gray', text: '下线' }
   }
-  
+
   // 列配置
   const columns = [
     {
@@ -274,17 +228,17 @@ const AdminAuditPage = () => {
           {/* 审核操作 */}
           {record.auditStatus === 'pending' && (
             <>
-              <Button 
-                type="primary" 
-                icon={<CheckCircleOutlined />} 
+              <Button
+                type="primary"
+                icon={<CheckCircleOutlined />}
                 onClick={() => openAuditModal(record, 'approve')}
                 loading={actionLoading}
               >
                 通过
               </Button>
-              <Button 
-                danger 
-                icon={<CloseCircleOutlined />} 
+              <Button
+                danger
+                icon={<CloseCircleOutlined />}
                 onClick={() => openAuditModal(record, 'reject')}
                 loading={actionLoading}
               >
@@ -292,14 +246,14 @@ const AdminAuditPage = () => {
               </Button>
             </>
           )}
-          
+
           {/* 发布/下线操作 */}
           {record.auditStatus === 'approved' && (
             <>
               {record.onlineStatus === 'offline' && (
-                <Button 
-                  type="primary" 
-                  icon={<UploadOutlined />} 
+                <Button
+                  type="primary"
+                  icon={<UploadOutlined />}
                   onClick={() => handlePublish(record)}
                   loading={actionLoading}
                 >
@@ -307,8 +261,8 @@ const AdminAuditPage = () => {
                 </Button>
               )}
               {record.onlineStatus === 'online' && (
-                <Button 
-                  icon={<DownloadOutlined />} 
+                <Button
+                  icon={<DownloadOutlined />}
                   onClick={() => handleOffline(record)}
                   loading={actionLoading}
                 >
@@ -330,20 +284,20 @@ const AdminAuditPage = () => {
         </Button>
         <Title level={2}>酒店审核管理</Title>
       </Space>
-      
+
       {/* 搜索和筛选 */}
       <Card style={{ marginBottom: 24 }}>
         <Space size="middle" style={{ marginBottom: 16 }}>
-          <Input 
-            placeholder="搜索酒店名称、地址" 
+          <Input
+            placeholder="搜索酒店名称、地址"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             style={{ width: 300 }}
             prefix={<SearchOutlined />}
             onPressEnter={handleSearch}
           />
-          <Select 
-            placeholder="审核状态" 
+          <Select
+            placeholder="审核状态"
             value={auditStatus}
             onChange={setAuditStatus}
             style={{ width: 150 }}
@@ -353,8 +307,8 @@ const AdminAuditPage = () => {
             <Option value="approved">已通过</Option>
             <Option value="rejected">已拒绝</Option>
           </Select>
-          <Select 
-            placeholder="上下线状态" 
+          <Select
+            placeholder="上下线状态"
             value={onlineStatus}
             onChange={setOnlineStatus}
             style={{ width: 150 }}
@@ -368,13 +322,13 @@ const AdminAuditPage = () => {
           </Button>
         </Space>
       </Card>
-      
+
       {/* 酒店列表 */}
       <Card>
         <Table
           columns={columns}
           dataSource={hotels}
-          key="id"
+          rowKey="id"
           loading={loading}
           pagination={{
             current: currentPage,
@@ -389,7 +343,7 @@ const AdminAuditPage = () => {
           }}
         />
       </Card>
-      
+
       {/* 审核模态框 */}
       <Modal
         title={auditAction === 'approve' ? '审核通过' : '审核拒绝'}

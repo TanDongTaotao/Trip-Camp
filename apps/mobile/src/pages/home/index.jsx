@@ -161,25 +161,31 @@ export default function Home() {
         
         {/* 城市选择 */}
         <Cell 
-          title={city && city !== '' ? city : '选择目的地'} 
+          title={
+            <View style={{ display: 'flex', alignItems: 'center' }}>
+              <Location color="#1989fa" style={{ marginRight: '8px' }} />
+              <View>{city && city !== '' ? city : '选择目的地'}</View>
+            </View>
+          }
           description={city && city !== '' ? '查询目的地' : "选择目的地"}
           extra={<ArrowRight />}
           align="center"
           onClick={() => setShowCityPicker(true)}
-        >
-          <Location color="#1989fa" style={{ marginRight: '8px' }} />
-        </Cell>
+        />
 
         {/* 日期选择 */}
         <Cell 
-          title={date[0] && date[1] ? `${date[0]} 至 ${date[1]}` : '选择日期'}
+          title={
+            <View style={{ display: 'flex', alignItems: 'center' }}>
+              <DateIcon color="#1989fa" style={{ marginRight: '8px' }} />
+              <View>{date[0] && date[1] ? `${date[0]} 至 ${date[1]}` : '选择日期'}</View>
+            </View>
+          }
           description={date[0] && date[1] ? `共 ${Math.ceil((new Date(date[1]) - new Date(date[0])) / (1000 * 60 * 60 * 24))} 晚` : '入住和离店日期'}
           extra={<ArrowRight />}
           align="center"
           onClick={() => setShowCalendar(true)}
-        >
-          <DateIcon color="#1989fa" style={{ marginRight: '8px' }} />
-        </Cell>
+        />
 
         {/* 关键词输入 */}
         <View style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}>

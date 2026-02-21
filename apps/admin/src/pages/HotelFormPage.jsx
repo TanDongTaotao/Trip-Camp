@@ -4,8 +4,8 @@
   - 支持酒店信息的录入和编辑
   - 包含房型管理功能
 */
-import { useState, useEffect } from 'react'
-import { Typography, Form, Input, Select, InputNumber, DatePicker, Card, Button, Space, message, Modal, Table } from 'antd'
+import { useState, useEffect, useCallback } from 'react'
+import { Typography, Form, Input, Select, InputNumber, Card, Button, Space, message } from 'antd'
 import { PlusOutlined, MinusOutlined, SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import api from '../utils/api'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -18,60 +18,63 @@ const HotelFormPage = () => {
   const navigate = useNavigate()
   const { id } = useParams()
   const isEdit = !!id
-  
+
   // 表单状态
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [submitLoading, setSubmitLoading] = useState(false)
-  
+
   // 房型状态
   const [roomTypes, setRoomTypes] = useState([])
-  const [editingRoom, setEditingRoom] = useState(null)
-  const [roomModalVisible, setRoomModalVisible] = useState(false)
-  
-  // 初始化表单
-  useEffect(() => {
-    if (isEdit) {
-      loadHotelData()
-    }
-  }, [isEdit, id])
-  
+
   // 加载酒店数据
-  const loadHotelData = async () => {
+  const loadHotelData = useCallback(async () => {
     setLoading(true)
     try {
-      // 这里需要根据后端API调整，暂时使用模拟数据
-      // const response = await api.get(`/merchant/hotels/${id}`)
-      // form.setFieldsValue(response.data.hotel)
-      // setRoomTypes(response.data.hotel.roomTypes || [])
-      message.info('编辑模式暂未实现，需要后端API支持')
+      const response = await api.get(`/merchant/hotels/${id}`)
+      const hotel = response.hotel
+      if (!hotel) {
+        message.error('酒店不存在或无权限访问')
+        navigate('/merchant/hotels', { replace: true })
+        return
+      }
+      const { roomTypes: hotelRoomTypes, ...rest } = hotel
+      form.setFieldsValue(rest)
+      setRoomTypes(Array.isArray(hotelRoomTypes) ? hotelRoomTypes : [])
     } catch (error) {
       message.error('加载酒店数据失败')
       console.error('加载酒店数据失败:', error)
     } finally {
       setLoading(false)
     }
-  }
-  
+  }, [form, id, navigate])
+
+  // 初始化表单
+  useEffect(() => {
+    if (isEdit) {
+      loadHotelData()
+    }
+  }, [isEdit, loadHotelData])
+
   // 处理房型变化
   const handleRoomTypeChange = (index, field, value) => {
     const newRoomTypes = [...roomTypes]
     newRoomTypes[index] = { ...newRoomTypes[index], [field]: value }
     setRoomTypes(newRoomTypes)
   }
-  
+
   // 添加房型
   const addRoomType = () => {
     setRoomTypes([...roomTypes, { name: '', price: 0, images: [], amenities: [] }])
   }
-  
+
   // 删除房型
   const removeRoomType = (index) => {
     const newRoomTypes = [...roomTypes]
     newRoomTypes.splice(index, 1)
     setRoomTypes(newRoomTypes)
   }
-  
+
   // 提交表单
   const handleSubmit = async (values) => {
     // 验证房型
@@ -79,7 +82,7 @@ const HotelFormPage = () => {
       message.error('至少需要添加一个房型')
       return
     }
-    
+
     for (const room of roomTypes) {
       if (!room.name) {
         message.error('房型名称不能为空')
@@ -90,25 +93,24 @@ const HotelFormPage = () => {
         return
       }
     }
-    
+
     setSubmitLoading(true)
     try {
       const hotelData = {
         ...values,
         roomTypes,
-        minPrice: Math.min(...roomTypes.map(room => room.price))
       }
-      
+
       if (isEdit) {
         // 编辑酒店
-        // await api.put(`/merchant/hotels/${id}`, hotelData)
+        await api.put(`/merchant/hotels/${id}`, hotelData)
         message.success('酒店编辑成功')
       } else {
         // 新增酒店
-        // await api.post('/merchant/hotels', hotelData)
+        await api.post('/merchant/hotels', hotelData)
         message.success('酒店录入成功')
       }
-      
+
       navigate('/merchant')
     } catch (error) {
       message.error(isEdit ? '酒店编辑失败' : '酒店录入失败')
@@ -117,7 +119,7 @@ const HotelFormPage = () => {
       setSubmitLoading(false)
     }
   }
-  
+
   // 提交审核
   const handleSubmitAudit = async (values) => {
     // 验证房型
@@ -125,7 +127,7 @@ const HotelFormPage = () => {
       message.error('至少需要添加一个房型')
       return
     }
-    
+
     for (const room of roomTypes) {
       if (!room.name) {
         message.error('房型名称不能为空')
@@ -136,29 +138,28 @@ const HotelFormPage = () => {
         return
       }
     }
-    
+
     setSubmitLoading(true)
     try {
       const hotelData = {
         ...values,
         roomTypes,
-        minPrice: Math.min(...roomTypes.map(room => room.price))
       }
-      
+
       if (isEdit) {
         // 先更新酒店
-        // await api.put(`/merchant/hotels/${id}`, hotelData)
+        await api.put(`/merchant/hotels/${id}`, hotelData)
         // 再提交审核
-        // await api.post(`/merchant/hotels/${id}/submit`)
+        await api.post(`/merchant/hotels/${id}/submit`)
         message.success('提交审核成功')
       } else {
         // 先新增酒店
-        // const response = await api.post('/merchant/hotels', hotelData)
+        const response = await api.post('/merchant/hotels', hotelData)
         // 再提交审核
-        // await api.post(`/merchant/hotels/${response.data.hotel.id}/submit`)
+        await api.post(`/merchant/hotels/${response.hotel.id}/submit`)
         message.success('酒店录入并提交审核成功')
       }
-      
+
       navigate('/merchant')
     } catch (error) {
       message.error('提交审核失败')
@@ -176,7 +177,7 @@ const HotelFormPage = () => {
         </Button>
         <Title level={2}>{isEdit ? '编辑酒店' : '录入酒店'}</Title>
       </Space>
-      
+
       {loading ? (
         <div>加载中...</div>
       ) : (
@@ -209,7 +210,7 @@ const HotelFormPage = () => {
                   <Input placeholder="请输入酒店英文名称" />
                 </Form.Item>
               </Space>
-              
+
               <Form.Item
                 label="酒店地址"
                 name="address"
@@ -217,7 +218,7 @@ const HotelFormPage = () => {
               >
                 <Input placeholder="请输入酒店详细地址" />
               </Form.Item>
-              
+
               <Form.Item
                 label="城市"
                 name="city"
@@ -225,7 +226,7 @@ const HotelFormPage = () => {
               >
                 <Input placeholder="请输入城市" />
               </Form.Item>
-              
+
               <Space size="middle" style={{ width: '100%' }}>
                 <Form.Item
                   label="酒店星级"
@@ -239,7 +240,7 @@ const HotelFormPage = () => {
                     ))}
                   </Select>
                 </Form.Item>
-                
+
                 <Form.Item
                   label="酒店类型"
                   name="type"
@@ -249,7 +250,7 @@ const HotelFormPage = () => {
                   <Input placeholder="例如：商务酒店、度假酒店、民宿等" />
                 </Form.Item>
               </Space>
-              
+
               <Form.Item
                 label="开业时间"
                 name="openTime"
@@ -257,7 +258,7 @@ const HotelFormPage = () => {
               >
                 <Input placeholder="请输入开业时间，例如：2020-01-01" />
               </Form.Item>
-              
+
               <Form.Item
                 label="酒店简介"
                 name="bannerText"
@@ -266,18 +267,18 @@ const HotelFormPage = () => {
               </Form.Item>
             </Space>
           </Card>
-          
+
           {/* 房型管理 */}
           <Card title="房型管理" style={{ marginBottom: 24 }}>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />} 
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
               onClick={addRoomType}
               style={{ marginBottom: 16 }}
             >
               添加房型
             </Button>
-            
+
             {roomTypes.length === 0 ? (
               <Paragraph type="secondary">请添加至少一个房型</Paragraph>
             ) : (
@@ -293,8 +294,8 @@ const HotelFormPage = () => {
                           rules={[{ required: true, message: '请输入房型名称' }]}
                           style={{ flex: 1, marginRight: 16 }}
                         >
-                          <Input 
-                            placeholder="请输入房型名称" 
+                          <Input
+                            placeholder="请输入房型名称"
                             value={room.name}
                             onChange={(e) => handleRoomTypeChange(index, 'name', e.target.value)}
                           />
@@ -306,31 +307,31 @@ const HotelFormPage = () => {
                           rules={[{ required: true, message: '请输入价格' }, { min: 0, message: '价格不能为负数' }]}
                           style={{ flex: 1 }}
                         >
-                          <InputNumber 
-                            placeholder="请输入价格" 
+                          <InputNumber
+                            placeholder="请输入价格"
                             value={room.price}
                             onChange={(value) => handleRoomTypeChange(index, 'price', value)}
                             min={0}
                             style={{ width: '100%' }}
                           />
                         </Form.Item>
-                        <Button 
-                          danger 
-                          icon={<MinusOutlined />} 
+                        <Button
+                          danger
+                          icon={<MinusOutlined />}
                           onClick={() => removeRoomType(index)}
                           style={{ alignSelf: 'flex-end', marginBottom: 16 }}
                         >
                           删除
                         </Button>
                       </Space>
-                      
+
                       <Form.Item
                         label="房型设施"
                         fieldKey={`roomTypes[${index}].amenities`}
                         fieldValue={room.amenities}
                       >
-                        <Input 
-                          placeholder="请输入房型设施，多个设施用逗号分隔" 
+                        <Input
+                          placeholder="请输入房型设施，多个设施用逗号分隔"
                           value={room.amenities.join(',')}
                           onChange={(e) => handleRoomTypeChange(index, 'amenities', e.target.value.split(','))}
                         />
@@ -341,21 +342,21 @@ const HotelFormPage = () => {
               </Space>
             )}
           </Card>
-          
+
           {/* 提交按钮 */}
           <Space size="middle">
             <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={submitLoading}>
               保存
             </Button>
-            <Button 
-              type="default" 
+            <Button
+              type="default"
               onClick={() => navigate('/merchant')}
               disabled={submitLoading}
             >
               取消
             </Button>
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               onClick={() => form.validateFields().then(values => handleSubmitAudit(values))}
               loading={submitLoading}
             >
