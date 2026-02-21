@@ -100,7 +100,12 @@ const AdminLayout = () => {
         {
           key: '/merchant',
           icon: <ShopOutlined />,
-          label: '商户管理'
+          label: '商户管理',
+          children: [
+            { key: '/merchant', label: '商户首页' },
+            { key: '/merchant/hotels', label: '我的酒店列表' },
+            { key: '/merchant/hotel/add', label: '酒店录入' }
+          ]
         }
       ]
       // 管理员：仅展示管理员相关入口
@@ -109,7 +114,11 @@ const AdminLayout = () => {
         {
           key: '/admin',
           icon: <TeamOutlined />,
-          label: '管理员管理'
+          label: '管理员管理',
+          children: [
+            { key: '/admin', label: '管理员首页' },
+            { key: '/admin/audit', label: '酒店审核管理' }
+          ]
         }
       ]
     }

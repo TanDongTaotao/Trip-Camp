@@ -17,6 +17,9 @@ import MerchantPage from './pages/MerchantPage'
 import AdminPage from './pages/AdminPage'
 import HotelListPage from './pages/HotelListPage'
 import HotelDetailPage from './pages/HotelDetailPage'
+import HotelFormPage from './pages/HotelFormPage'
+import MerchantHotelListPage from './pages/MerchantHotelListPage'
+import AdminAuditPage from './pages/AdminAuditPage'
 import PrivateRoute from './components/PrivateRoute'
 import './App.css'
 
@@ -34,7 +37,11 @@ function App() {
           <Route path="/" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="merchant" element={<MerchantPage />} />
+            <Route path="merchant/hotels" element={<MerchantHotelListPage />} />
+            <Route path="merchant/hotel/add" element={<HotelFormPage />} />
+            <Route path="merchant/hotel/edit/:id" element={<HotelFormPage />} />
             <Route path="admin" element={<AdminPage />} />
+            <Route path="admin/audit" element={<AdminAuditPage />} />
             <Route path="hotel/list" element={<HotelListPage />} />
             <Route path="hotel/detail/:id" element={<HotelDetailPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
