@@ -345,7 +345,6 @@ const HotelFormPage = () => {
                         <Form.Item
                           label="房型名称"
                           fieldKey={`roomTypes[${index}].name`}
-                          fieldValue={room.name}
                           rules={[{ required: true, message: '请输入房型名称' }]}
                           style={{ flex: 1, marginRight: 16 }}
                         >
@@ -358,7 +357,6 @@ const HotelFormPage = () => {
                         <Form.Item
                           label="价格"
                           fieldKey={`roomTypes[${index}].price`}
-                          fieldValue={room.price}
                           rules={[{ required: true, message: '请输入价格' }, { min: 0, message: '价格不能为负数' }]}
                           style={{ flex: 1 }}
                         >
@@ -383,7 +381,6 @@ const HotelFormPage = () => {
                       <Form.Item
                         label="房型设施"
                         fieldKey={`roomTypes[${index}].amenities`}
-                        fieldValue={room.amenities}
                       >
                         <Input
                           placeholder="请输入房型设施，多个设施用逗号分隔"
@@ -395,7 +392,6 @@ const HotelFormPage = () => {
                       <Form.Item
                         label="房型图片"
                         fieldKey={`roomTypes[${index}].images`}
-                        fieldValue={room.images}
                         rules={[{ required: true, message: '请至少添加一张房型图片' }]}
                       >
                         <Input
