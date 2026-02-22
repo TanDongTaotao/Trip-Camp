@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { View, ScrollView, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { SearchBar, Loading, Empty } from '@nutui/nutui-react-taro'
+import { Location } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
 import './index.scss'
 
@@ -10,6 +11,9 @@ export default function City() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [scrollIntoView, setScrollIntoView] = useState('')
+  const [locating, setLocating] = useState(false)
+  const [locatedCity, setLocatedCity] = useState('')
+  const [locateError, setLocateError] = useState('')
 
   useEffect(() => {
     Taro.setNavigationBarTitle({ title: '选择城市' })
@@ -61,9 +65,77 @@ export default function City() {
     Taro.navigateBack()
   }
 
+  const handleLocate = async () => {
+    if (locating) return
+    if (!cityList || cityList.length === 0) {
+      Taro.showToast({ title: '城市列表未加载完成', icon: 'none' })
+      return
+    }
+    setLocating(true)
+    setLocateError('')
+    try {
+      const location = await Taro.getLocation({ type: 'wgs84' })
+      const res = await Taro.request({
+        url: 'https://nominatim.openstreetmap.org/reverse',
+        method: 'GET',
+        data: {
+          lat: location.latitude,
+          lon: location.longitude,
+          format: 'json',
+          zoom: 8,
+          addressdetails: 1
+        },
+        header: {
+          'accept-language': 'zh-CN'
+        }
+      })
+      const address = res?.data?.address || {}
+      const cityRaw = address.city || ''
+      const stateRaw = address.state || ''
+      const displayName = String(res?.data?.display_name || '')
+      const cityName = String(cityRaw || '').replace(/市$/, '')
+      if (!cityName && !displayName) {
+        setLocateError('定位失败')
+        Taro.showToast({ title: '定位失败', icon: 'none' })
+        return
+      }
+      const sortedCities = [...cityList].sort((a, b) => b.name.length - a.name.length)
+      const matchedByDisplay = displayName
+        ? sortedCities.find((item) => displayName.includes(item.name))
+        : null
+      const matchedByCity = cityName
+        ? cityList.find((item) => item.name === cityName || item.name === `${cityName}市`)
+        : null
+      const matchedByState = String(stateRaw || '').endsWith('市')
+        ? cityList.find((item) => item.name === stateRaw.replace(/市$/, '') || item.name === stateRaw)
+        : null
+      const matched = matchedByDisplay || matchedByCity || matchedByState
+      setLocatedCity(matched?.name || cityName || stateRaw || '')
+      if (matched) {
+        handleSelect(matched)
+      } else {
+        const fallbackName = cityName || stateRaw || '未知'
+        setLocateError(`定位到${fallbackName}，暂无该城市`)
+        Taro.showToast({ title: `定位到${fallbackName}，暂无该城市`, icon: 'none' })
+      }
+    } catch (err) {
+      const msg = err?.errMsg || err?.message || ''
+      const isDenied = /deny|denied|permission|auth/i.test(msg)
+      const text = isDenied ? '定位失败，未授权定位权限' : '定位失败，请检查定位权限'
+      setLocateError(text)
+      Taro.showToast({ title: text, icon: 'none' })
+    } finally {
+      setLocating(false)
+    }
+  }
+
   return (
     <View className="city-page">
       <View className="city-search">
+        <View className="city-locate" onClick={handleLocate}>
+          <Location size={16} color="#1989fa" />
+          <Text className="city-locate-text">{locating ? '定位中' : '定位'}</Text>
+        </View>
         <SearchBar
           value={search}
           placeholder="搜索城市"
@@ -71,6 +143,14 @@ export default function City() {
           onClear={() => setSearch('')}
         />
       </View>
+
+      {(locatedCity || locateError) && (
+        <View className="city-location-result">
+          <Text className="city-location-label">定位结果：</Text>
+          <Text className="city-location-value">{locatedCity || '未知'}</Text>
+          {locateError && <Text className="city-location-error">{locateError}</Text>}
+        </View>
+      )}
 
       <View className="city-list">
         {loading ? (

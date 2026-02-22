@@ -1,9 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
 import { View, Image, ScrollView, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { SearchBar, Tabs, Tag, Rate, Loading, Empty, Skeleton } from '@nutui/nutui-react-taro'
+import { Tabs, Tag, Rate, Loading, Empty, Skeleton, Calendar, Input } from '@nutui/nutui-react-taro'
+import { ArrowLeft, Search, Location } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
 import './index.scss'
+
+const hotelTypeStyles = {
+  度假酒店: { color: '#FFF7E6', textColor: '#FA8C16' },
+  商务酒店: { color: '#E6F7FF', textColor: '#1890FF' },
+  高档酒店: { color: '#F6FFED', textColor: '#52C41A' },
+  经济酒店: { color: '#F0F0F0', textColor: '#595959' },
+  豪华酒店: { color: '#F9F0FF', textColor: '#722ED1' },
+  民宿: { color: '#FFF0F6', textColor: '#EB2F96' }
+}
+
+const getTypeTagStyle = (type) => {
+  if (!type) return { color: '#E6F7FF', textColor: '#1890FF' }
+  return hotelTypeStyles[type] || { color: '#E6F7FF', textColor: '#1890FF' }
+}
 
 export default function List() {
   const router = useRouter()
@@ -16,6 +31,9 @@ export default function List() {
   const [error, setError] = useState(null)
   const requestSeqRef = useRef(0)
   const inFlightRef = useRef(false)
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [dateRange, setDateRange] = useState(['', ''])
+  const [keywordInput, setKeywordInput] = useState('')
 
   // 查询参数
   const [queryParams, setQueryParams] = useState({
@@ -47,6 +65,16 @@ export default function List() {
     })
     fetchList(1, city, keyword, star, '', tags)
   }, [])
+
+  useEffect(() => {
+    if (queryParams.checkIn && queryParams.checkOut) {
+      setDateRange([queryParams.checkIn, queryParams.checkOut])
+    }
+  }, [queryParams.checkIn, queryParams.checkOut])
+
+  useEffect(() => {
+    setKeywordInput(queryParams.keyword || '')
+  }, [queryParams.keyword])
 
   const fetchList = async (pageNum, cityStr, keyStr, starVal, sortVal, tagsStr) => {
     if (inFlightRef.current && pageNum !== 1) return
@@ -119,20 +147,97 @@ export default function List() {
     fetchList(1, queryParams.city, queryParams.keyword, queryParams.star, val, queryParams.tags)
   }
 
+  const updateQueryAndFetch = (patch) => {
+    const next = { ...queryParams, ...patch }
+    setQueryParams(next)
+    setPage(1)
+    setHasMore(true)
+    fetchList(1, next.city, next.keyword, next.star, sort, next.tags)
+  }
+
+  const handleCitySelect = () => {
+    Taro.navigateTo({
+      url: `/pages/city/index?current=${encodeURIComponent(queryParams.city || '')}`,
+      events: {
+        selectCity: (data) => {
+          if (data && data.city) {
+            updateQueryAndFetch({ city: data.city })
+          }
+        }
+      }
+    })
+  }
+
+  const formatDate = (d) => {
+    if (!d) return ''
+    if (typeof d === 'string') return d
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  const parseCalendarRange = (param) => {
+    if (!param || param.length < 2) return ['', '']
+    if (Array.isArray(param[0]) && param[0][3]) {
+      return [param[0][3], param[1][3]]
+    }
+    return [formatDate(param[0]), formatDate(param[1])]
+  }
+
+  const handleKeywordCommit = () => {
+    const trimmed = (keywordInput || '').trim()
+    if (trimmed === (queryParams.keyword || '')) return
+    updateQueryAndFetch({ keyword: trimmed })
+  }
+
   const activeTags = queryParams.tags
     ? queryParams.tags.split(',').map((t) => t.trim()).filter(Boolean)
     : []
+  const shortDate = (str) => (str && str.length >= 10 ? str.slice(5) : str)
 
   return (
     <View className='list-page' style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
       {/* 顶部搜索条回填 */}
-      <View style={{ background: '#fff', padding: '8px' }}>
-        <SearchBar
-          shape="round"
-          placeholder={`${decodeURIComponent(queryParams.city)} | ${decodeURIComponent(queryParams.checkIn)} 入住`}
-          readOnly
+      <View style={{ background: '#fff', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <View
+          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={() => Taro.navigateBack()}
-        />
+        >
+          <ArrowLeft size={18} color="#333" />
+        </View>
+        <View
+          style={{ flex: 1, height: '36px', borderRadius: '18px', border: '1px solid #d9d9d9', padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <View style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Text style={{ fontSize: '14px', color: '#1f1f1f', fontWeight: 'bold' }} onClick={handleCitySelect}>
+              {decodeURIComponent(queryParams.city) || '城市'}
+            </Text>
+            <View style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }} onClick={() => setShowCalendar(true)}>
+              <Text style={{ fontSize: '12px', color: '#16a34a', fontWeight: 'bold' }}>
+                {shortDate(decodeURIComponent(queryParams.checkIn)) || '日期'}
+              </Text>
+              <Text style={{ fontSize: '12px', color: '#16a34a', fontWeight: 'bold' }}>
+                {shortDate(decodeURIComponent(queryParams.checkOut)) || ''}
+              </Text>
+            </View>
+            <View style={{ minWidth: 0, flex: 1 }}>
+              <Input
+                placeholder="地名/酒店/关键词"
+                value={keywordInput}
+                onChange={(val) => setKeywordInput(val)}
+                onBlur={handleKeywordCommit}
+                onClear={() => {
+                  setKeywordInput('')
+                  updateQueryAndFetch({ keyword: '' })
+                }}
+                style={{ padding: 0, fontSize: '12px', color: '#666' }}
+              />
+            </View>
+          </View>
+          <Search size={16} color="#999" />
+        </View>
+        <View style={{ width: '44px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <Location size={16} color="#5A6A7A" />
+          <Text style={{ fontSize: '10px', color: '#5A6A7A' }}>地图</Text>
+        </View>
       </View>
 
       {/* 排序筛选栏 */}
@@ -202,10 +307,16 @@ export default function List() {
                 {/* 右侧信息 */}
                 <View style={{ flex: 1, padding: '10px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <View>
-                    <View style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>{item.nameCn}</View>
+                    <View style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: '6px', rowGap: '4px', marginBottom: '4px' }}>
+                      <Text style={{ fontSize: '16px', fontWeight: 'bold', lineHeight: '22px', wordBreak: 'break-all', flexShrink: 1 }}>{item.nameCn}</Text>
+                      {item.type && (
+                        <Tag style={{ fontSize: '10px' }} color={getTypeTagStyle(item.type).color} textColor={getTypeTagStyle(item.type).textColor}>
+                          {item.type}
+                        </Tag>
+                      )}
+                    </View>
                     <View style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                       <Rate value={item.star} count={5} readOnly size={12} />
-                      <Tag type="primary" plain style={{ marginLeft: '8px', fontSize: '10px' }}>{item.type}</Tag>
                     </View>
                     <View style={{ fontSize: '12px', color: '#666' }}>{item.address}</View>
                   </View>
@@ -236,6 +347,30 @@ export default function List() {
           !loading && <Empty description="暂无酒店数据" />
         )}
       </ScrollView>
+
+      <Calendar
+        visible={showCalendar}
+        type="range"
+        title="请选择入住离店日期"
+        startDate={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
+        endDate={`${new Date().getFullYear() + 1}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
+        defaultValue={dateRange[0] && dateRange[1] ? dateRange : []}
+        onClose={() => setShowCalendar(false)}
+        onConfirm={(param) => {
+          const [startStr, endStr] = parseCalendarRange(param)
+          if (startStr && endStr) {
+            const start = new Date(startStr)
+            const end = new Date(endStr)
+            if (end <= start) {
+              Taro.showToast({ title: '离店日期需晚于入住日期', icon: 'none' })
+              return
+            }
+            setDateRange([startStr, endStr])
+            updateQueryAndFetch({ checkIn: startStr, checkOut: endStr })
+            setShowCalendar(false)
+          }
+        }}
+      />
     </View>
   )
 }

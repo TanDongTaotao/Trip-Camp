@@ -14,6 +14,9 @@ const { Title, Paragraph } = Typography
 const { Option } = Select
 const { TextArea } = Input
 
+const hotelTypeOptions = ['度假酒店', '商务酒店', '高档酒店', '经济酒店', '豪华酒店', '民宿']
+const hotelTagOptions = ['亲子', '豪华', '免费停车场', '暖气', '空调', '影音设施', '可携带动物', '健身房', '泳池', '早餐', '商务', '近地铁']
+
 const HotelFormPage = () => {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -327,12 +330,27 @@ const HotelFormPage = () => {
                 <Form.Item
                   label="酒店类型"
                   name="type"
-                  rules={[{ required: true, message: '请输入酒店类型' }]}
+                  rules={[{ required: true, message: '请选择酒店类型' }]}
                   style={{ flex: 1 }}
                 >
-                  <Input placeholder="例如：商务酒店、度假酒店、民宿等" />
+                  <Select placeholder="请选择酒店类型">
+                    {hotelTypeOptions.map(type => (
+                      <Option key={type} value={type}>{type}</Option>
+                    ))}
+                  </Select>
                 </Form.Item>
               </Space>
+
+              <Form.Item
+                label="酒店标签"
+                name="tags"
+              >
+                <Select mode="multiple" placeholder="请选择酒店标签">
+                  {hotelTagOptions.map(tag => (
+                    <Option key={tag} value={tag}>{tag}</Option>
+                  ))}
+                </Select>
+              </Form.Item>
 
               <Form.Item
                 label="开业时间"

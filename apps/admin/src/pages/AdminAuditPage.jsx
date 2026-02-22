@@ -77,6 +77,7 @@ const AdminAuditPage = () => {
 
     setActionLoading(true)
     try {
+      const isUpdateAudit = selectedHotel && selectedHotel.updateStatus === 'pending'
       let rejectReason = ''
       if (auditAction === 'reject') {
         rejectReason = await rejectForm.validateFields(['rejectReason'])
@@ -88,12 +89,21 @@ const AdminAuditPage = () => {
         rejectReason: rejectReason
       })
 
-      message.success(auditAction === 'approve' ? '审核通过成功' : '审核拒绝成功')
+      if (isUpdateAudit) {
+        message.success(auditAction === 'approve' ? '修改审核通过成功' : '修改审核拒绝成功')
+      } else {
+        message.success(auditAction === 'approve' ? '审核通过成功' : '审核拒绝成功')
+      }
       setAuditModalVisible(false)
       // 重新加载列表
       loadHotels()
     } catch (error) {
-      message.error(auditAction === 'approve' ? '审核通过失败' : '审核拒绝失败')
+      const isUpdateAudit = selectedHotel && selectedHotel.updateStatus === 'pending'
+      if (isUpdateAudit) {
+        message.error(auditAction === 'approve' ? '修改审核通过失败' : '修改审核拒绝失败')
+      } else {
+        message.error(auditAction === 'approve' ? '审核通过失败' : '审核拒绝失败')
+      }
       console.error('审核操作失败:', error)
     } finally {
       setActionLoading(false)
@@ -165,6 +175,13 @@ const AdminAuditPage = () => {
     offline: { color: 'gray', text: '下线' }
   }
 
+  const updateStatusConfig = {
+    none: { color: 'gray', text: '无修改' },
+    draft: { color: 'orange', text: '修改草稿' },
+    pending: { color: 'blue', text: '修改待审' },
+    rejected: { color: 'red', text: '修改被拒' }
+  }
+
   // 列配置
   const columns = [
     {
@@ -215,9 +232,24 @@ const AdminAuditPage = () => {
       }
     },
     {
+      title: '修改状态',
+      dataIndex: 'updateStatus',
+      key: 'updateStatus',
+      render: (status) => {
+        const config = updateStatusConfig[status] || { color: 'gray', text: '未知' }
+        return <Tag color={config.color}>{config.text}</Tag>
+      }
+    },
+    {
       title: '被拒原因',
       dataIndex: 'rejectReason',
       key: 'rejectReason',
+      render: (reason) => reason || '-'
+    },
+    {
+      title: '修改拒绝原因',
+      dataIndex: 'updateRejectReason',
+      key: 'updateRejectReason',
       render: (reason) => reason || '-'
     },
     {
@@ -225,7 +257,6 @@ const AdminAuditPage = () => {
       key: 'action',
       render: (_, record) => (
         <Space size="middle">
-          {/* 审核操作 */}
           {record.auditStatus === 'pending' && (
             <>
               <Button
@@ -246,8 +277,26 @@ const AdminAuditPage = () => {
               </Button>
             </>
           )}
-
-          {/* 发布/下线操作 */}
+          {record.updateStatus === 'pending' && (
+            <>
+              <Button
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                onClick={() => openAuditModal(record, 'approve')}
+                loading={actionLoading}
+              >
+                修改通过
+              </Button>
+              <Button
+                danger
+                icon={<CloseCircleOutlined />}
+                onClick={() => openAuditModal(record, 'reject')}
+                loading={actionLoading}
+              >
+                修改拒绝
+              </Button>
+            </>
+          )}
           {record.auditStatus === 'approved' && (
             <>
               {record.onlineStatus === 'offline' && (

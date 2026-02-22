@@ -28,6 +28,8 @@ function toAdminListItem(hotel) {
     auditStatus: hotel.auditStatus,
     onlineStatus: hotel.onlineStatus,
     rejectReason: hotel.rejectReason || null,
+    updateStatus: hotel.updateStatus || 'none',
+    updateRejectReason: hotel.updateRejectReason || null,
     nameCn: hotel.nameCn,
     address: hotel.address,
     city: hotel.city,
@@ -122,26 +124,53 @@ router.post('/hotels/:id/audit', requireAuth, requireRole('admin'), async (req, 
       throw new AppError({ status: 404, code: 'NOT_FOUND', message: 'Hotel not found' })
     }
 
-    if (hotel.auditStatus !== 'pending') {
-      throw new AppError({
-        status: 409,
-        code: 'INVALID_STATE',
-        message: 'Hotel cannot be audited in current state',
-        details: { auditStatus: hotel.auditStatus },
-      })
+    if (hotel.auditStatus === 'pending') {
+      if (action === 'approve') {
+        hotel.auditStatus = 'approved'
+        hotel.rejectReason = null
+      } else {
+        hotel.auditStatus = 'rejected'
+        hotel.rejectReason = rejectReason
+        hotel.onlineStatus = 'offline'
+      }
+      await hotel.save()
+      res.json({ hotel: toAdminListItem(hotel.toObject()) })
+      return
     }
 
-    if (action === 'approve') {
-      hotel.auditStatus = 'approved'
-      hotel.rejectReason = null
-    } else {
-      hotel.auditStatus = 'rejected'
-      hotel.rejectReason = rejectReason
-      hotel.onlineStatus = 'offline'
+    if (hotel.updateStatus === 'pending') {
+      const payload = hotel.updatePayload || {}
+      if (!payload || Object.keys(payload).length === 0) {
+        throw new AppError({
+          status: 422,
+          code: 'VALIDATION_ERROR',
+          message: 'No updates to audit',
+        })
+      }
+      if (action === 'approve') {
+        for (const [k, v] of Object.entries(payload)) {
+          if (v === null) continue
+          hotel[k] = v
+        }
+        hotel.updateStatus = 'none'
+        hotel.updateRejectReason = null
+        hotel.updatePayload = null
+      } else {
+        hotel.updateStatus = 'rejected'
+        hotel.updateRejectReason = rejectReason
+        hotel.updatePayload = null
+      }
+      await hotel.save()
+      res.json({ hotel: toAdminListItem(hotel.toObject()) })
+      return
     }
 
-    await hotel.save()
-    res.json({ hotel: toAdminListItem(hotel.toObject()) })
+    throw new AppError({
+      status: 409,
+      code: 'INVALID_STATE',
+      message: 'Hotel cannot be audited in current state',
+      details: { auditStatus: hotel.auditStatus, updateStatus: hotel.updateStatus },
+    })
   } catch (e) {
     next(e)
   }
@@ -222,4 +251,3 @@ router.delete('/hotels/:id', requireAuth, requireRole('admin'), async (req, res,
 })
 
 module.exports = { adminRouter: router }
-

@@ -84,6 +84,20 @@ const MerchantHotelListPage = () => {
     }
   }
 
+  const handleSubmitUpdate = async (hotel) => {
+    setSubmitLoading(true)
+    try {
+      await api.post(`/merchant/hotels/${hotel.id}/submit`)
+      message.success('提交修改成功')
+      loadHotels()
+    } catch (error) {
+      message.error('提交修改失败')
+      console.error('提交修改失败:', error)
+    } finally {
+      setSubmitLoading(false)
+    }
+  }
+
   // 处理查看详情
   const handleViewDetail = (hotel) => {
     setSelectedHotel(hotel)
@@ -113,6 +127,13 @@ const MerchantHotelListPage = () => {
   const onlineStatusConfig = {
     online: { color: 'green', text: '上线' },
     offline: { color: 'gray', text: '下线' }
+  }
+
+  const updateStatusConfig = {
+    none: { color: 'gray', text: '无修改' },
+    draft: { color: 'orange', text: '修改草稿' },
+    pending: { color: 'blue', text: '修改待审' },
+    rejected: { color: 'red', text: '修改被拒' }
   }
 
   // 列配置
@@ -165,9 +186,24 @@ const MerchantHotelListPage = () => {
       }
     },
     {
+      title: '修改状态',
+      dataIndex: 'updateStatus',
+      key: 'updateStatus',
+      render: (status) => {
+        const config = updateStatusConfig[status] || { color: 'gray', text: '未知' }
+        return <Tag color={config.color}>{config.text}</Tag>
+      }
+    },
+    {
       title: '被拒原因',
       dataIndex: 'rejectReason',
       key: 'rejectReason',
+      render: (reason) => reason || '-'
+    },
+    {
+      title: '修改拒绝原因',
+      dataIndex: 'updateRejectReason',
+      key: 'updateRejectReason',
       render: (reason) => reason || '-'
     },
     {
@@ -180,11 +216,14 @@ const MerchantHotelListPage = () => {
           <Button size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record)}>
             查看
           </Button>
-          {(record.auditStatus === 'draft' || record.auditStatus === 'rejected') && (
-            <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-              编辑
-            </Button>
-          )}
+          {(record.auditStatus === 'draft' ||
+            record.auditStatus === 'rejected' ||
+            record.auditStatus === 'pending' ||
+            (record.auditStatus === 'approved' && record.onlineStatus === 'online')) && (
+              <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
+                编辑
+              </Button>
+            )}
           {(record.auditStatus === 'draft' || record.auditStatus === 'rejected') && (
             <Button
               type="primary"
@@ -193,9 +232,22 @@ const MerchantHotelListPage = () => {
               onClick={() => handleSubmitAudit(record)}
               loading={submitLoading}
             >
-              提交审核
+              {record.auditStatus === 'rejected' ? '重新提交审核' : '提交审核'}
             </Button>
           )}
+          {record.auditStatus === 'approved' &&
+            record.onlineStatus === 'online' &&
+            (record.updateStatus === 'draft' || record.updateStatus === 'rejected') && (
+              <Button
+                type="primary"
+                size="small"
+                icon={<CheckOutlined />}
+                onClick={() => handleSubmitUpdate(record)}
+                loading={submitLoading}
+              >
+                {record.updateStatus === 'rejected' ? '重新提交修改' : '提交修改'}
+              </Button>
+            )}
         </Space>
       )
     }

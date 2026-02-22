@@ -61,6 +61,14 @@ const hotelSchema = new mongoose.Schema(
     },
     // 审核拒绝原因（仅 rejected 时有意义）
     rejectReason: { type: String, trim: true, default: null },
+    updateStatus: {
+      type: String,
+      required: true,
+      enum: ['none', 'draft', 'pending', 'rejected'],
+      default: 'none',
+    },
+    updateRejectReason: { type: String, trim: true, default: null },
+    updatePayload: { type: mongoose.Schema.Types.Mixed, default: null },
     // 软删除时间（可选加分，不做物理删除）
     deletedAt: { type: Date, default: null },
 

@@ -2,9 +2,40 @@ import { useState, useEffect } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Swiper, SwiperItem, Rate, Tag, Divider, Button, Skeleton, Calendar } from '@nutui/nutui-react-taro'
-import { Location, Share } from '@nutui/icons-react-taro'
+import { Location, Share, ArrowLeft } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
 import './index.scss'
+
+const hotelTypeStyles = {
+  度假酒店: { color: '#FFF7E6', textColor: '#FA8C16' },
+  商务酒店: { color: '#E6F7FF', textColor: '#1890FF' },
+  高档酒店: { color: '#F6FFED', textColor: '#52C41A' },
+  经济酒店: { color: '#F0F0F0', textColor: '#595959' },
+  豪华酒店: { color: '#F9F0FF', textColor: '#722ED1' },
+  民宿: { color: '#FFF0F6', textColor: '#EB2F96' }
+}
+
+const getTypeTagStyle = (type) => {
+  if (!type) return { color: '#E6F7FF', textColor: '#1890FF' }
+  return hotelTypeStyles[type] || { color: '#E6F7FF', textColor: '#1890FF' }
+}
+
+const tagIconMap = {
+  亲子: '👪',
+  豪华: '👑',
+  免费停车场: '🅿️',
+  暖气: '🔥',
+  空调: '❄️',
+  影音设施: '🎬',
+  可携带动物: '🐾',
+  健身房: '💪',
+  泳池: '🏊',
+  早餐: '🍳',
+  商务: '💼',
+  近地铁: '🚇'
+}
+
+const getTagIcon = (tag) => tagIconMap[tag] || '🏷️'
 
 export default function Detail() {
   const router = useRouter()
@@ -103,7 +134,14 @@ export default function Detail() {
   const nightsText = calcNights(dateRange[0], dateRange[1])
 
   return (
-    <View className='detail-page' style={{ paddingBottom: '80px', background: '#f5f5f5', minHeight: '100vh' }}>
+    <View className='detail-page' style={{ paddingTop: '44px', paddingBottom: '80px', background: '#f5f5f5', minHeight: '100vh' }}>
+      <View style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '44px', background: 'rgba(255,255,255,0.96)', display: 'flex', alignItems: 'center', padding: '0 12px', zIndex: 1000, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <View style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => Taro.navigateBack()}>
+          <ArrowLeft size={18} color="#333" />
+        </View>
+        <View style={{ flex: 1, textAlign: 'center', fontSize: '14px', fontWeight: 'bold', color: '#333' }}>酒店详情</View>
+        <View style={{ width: '32px', height: '32px' }} />
+      </View>
       {/* 顶部轮播 */}
       <Swiper defaultValue={0} loop autoPlay height={200}>
         {images.map((img, idx) => (
@@ -119,13 +157,31 @@ export default function Detail() {
 
       {/* 基础信息 */}
       <View style={{ background: '#fff', padding: '16px', marginBottom: '10px' }}>
-        <View style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '4px' }}>{detail.nameCn}</View>
+        <View style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: '8px', rowGap: '6px', marginBottom: '4px' }}>
+          <Text style={{ fontSize: '20px', fontWeight: 'bold', lineHeight: '26px', wordBreak: 'break-all', flexShrink: 1 }}>{detail.nameCn}</Text>
+          {detail.type && (
+            <Tag style={{ fontSize: '10px' }} color={getTypeTagStyle(detail.type).color} textColor={getTypeTagStyle(detail.type).textColor}>
+              {detail.type}
+            </Tag>
+          )}
+        </View>
+        {detail.tags && detail.tags.length > 0 && (
+          <ScrollView scrollX style={{ width: '100%', marginBottom: '10px' }}>
+            <View style={{ display: 'inline-flex', gap: '10px', flexWrap: 'nowrap' }}>
+              {detail.tags.map((tag, idx) => (
+                <View key={`${tag}-${idx}`} style={{ display: 'inline-flex', alignItems: 'center', height: '32px', padding: '0 12px', borderRadius: '16px', background: '#f5f5f5', border: '1px solid #eee', fontSize: '13px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>
+                  <Text style={{ marginRight: '6px', fontSize: '14px' }}>{getTagIcon(tag)}</Text>
+                  <Text>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        )}
         <View style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>{detail.nameEn}</View>
 
         <View style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
           <Rate value={detail.star} count={5} readOnly size={14} />
           <Text style={{ fontSize: '14px', color: '#ff9900', marginLeft: '8px', fontWeight: 'bold' }}>{detail.star}.0分</Text>
-          <Tag type="primary" plain style={{ marginLeft: '12px' }}>{detail.type}</Tag>
         </View>
 
         <Divider style={{ margin: '10px 0' }} />
@@ -155,18 +211,6 @@ export default function Detail() {
           <View style={{ textAlign: 'right' }}>
             <View style={{ fontSize: '12px', color: '#999' }}>共 {nightsText}</View>
             <View style={{ fontSize: '12px', color: '#1989fa', marginTop: '4px' }}>点击修改日期</View>
-          </View>
-        </View>
-      )}
-
-      {/* 设施服务 */}
-      {detail.tags && detail.tags.length > 0 && (
-        <View style={{ background: '#fff', padding: '16px', marginBottom: '10px' }}>
-          <View style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '10px' }}>设施服务</View>
-          <View style={{ display: 'flex', flexWrap: 'wrap' }}>
-            {detail.tags.map((tag, idx) => (
-              <Tag key={idx} color="#f0f2f5" textColor="#666" style={{ marginRight: '8px', marginBottom: '8px' }}>{tag}</Tag>
-            ))}
           </View>
         </View>
       )}

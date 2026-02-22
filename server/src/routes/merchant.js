@@ -33,6 +33,8 @@ function toHotelManageItem(hotel) {
     auditStatus: hotel.auditStatus,
     onlineStatus: hotel.onlineStatus,
     rejectReason: hotel.rejectReason || null,
+    updateStatus: hotel.updateStatus || 'none',
+    updateRejectReason: hotel.updateRejectReason || null,
     nameCn: hotel.nameCn,
     nameEn: hotel.nameEn || '',
     address: hotel.address,
@@ -340,7 +342,23 @@ router.put('/hotels/:id', requireAuth, requireRole('merchant'), async (req, res,
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Permission denied' })
     }
 
-    if (!['draft', 'rejected'].includes(hotel.auditStatus)) {
+    if (hotel.auditStatus === 'approved' && hotel.onlineStatus === 'online') {
+      if (!updates || Object.keys(updates).length === 0) {
+        throw new AppError({
+          status: 422,
+          code: 'VALIDATION_ERROR',
+          message: 'No updates provided',
+        })
+      }
+      hotel.updatePayload = updates
+      hotel.updateStatus = 'draft'
+      hotel.updateRejectReason = null
+      await hotel.save()
+      res.json({ hotel: toHotelManageItem(hotel.toObject()) })
+      return
+    }
+
+    if (!['draft', 'rejected', 'pending'].includes(hotel.auditStatus)) {
       throw new AppError({
         status: 409,
         code: 'INVALID_STATE',
@@ -349,9 +367,17 @@ router.put('/hotels/:id', requireAuth, requireRole('merchant'), async (req, res,
       })
     }
 
+    const shouldResetAudit = hotel.auditStatus === 'pending'
+
     for (const [k, v] of Object.entries(updates)) {
       if (v === null) continue
       hotel[k] = v
+    }
+
+    if (shouldResetAudit) {
+      hotel.auditStatus = 'draft'
+      hotel.rejectReason = null
+      hotel.onlineStatus = 'offline'
     }
 
     await hotel.save()
@@ -376,21 +402,45 @@ router.post('/hotels/:id/submit', requireAuth, requireRole('merchant'), async (r
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Permission denied' })
     }
 
-    if (!['draft', 'rejected'].includes(hotel.auditStatus)) {
-      throw new AppError({
-        status: 409,
-        code: 'INVALID_STATE',
-        message: 'Hotel cannot be submitted in current state',
-        details: { auditStatus: hotel.auditStatus },
-      })
+    if (['draft', 'rejected'].includes(hotel.auditStatus)) {
+      hotel.auditStatus = 'pending'
+      hotel.rejectReason = null
+      hotel.onlineStatus = 'offline'
+      await hotel.save()
+      res.json({ hotel: toHotelManageItem(hotel.toObject()) })
+      return
     }
 
-    hotel.auditStatus = 'pending'
-    hotel.rejectReason = null
-    hotel.onlineStatus = 'offline'
-    await hotel.save()
+    if (hotel.auditStatus === 'approved' && hotel.onlineStatus === 'online') {
+      const payload = hotel.updatePayload || {}
+      if (!payload || Object.keys(payload).length === 0) {
+        throw new AppError({
+          status: 422,
+          code: 'VALIDATION_ERROR',
+          message: 'No updates to submit',
+        })
+      }
+      if (!['draft', 'rejected'].includes(hotel.updateStatus)) {
+        throw new AppError({
+          status: 409,
+          code: 'INVALID_STATE',
+          message: 'Update cannot be submitted in current state',
+          details: { updateStatus: hotel.updateStatus },
+        })
+      }
+      hotel.updateStatus = 'pending'
+      hotel.updateRejectReason = null
+      await hotel.save()
+      res.json({ hotel: toHotelManageItem(hotel.toObject()) })
+      return
+    }
 
-    res.json({ hotel: toHotelManageItem(hotel.toObject()) })
+    throw new AppError({
+      status: 409,
+      code: 'INVALID_STATE',
+      message: 'Hotel cannot be submitted in current state',
+      details: { auditStatus: hotel.auditStatus, onlineStatus: hotel.onlineStatus },
+    })
   } catch (e) {
     next(e)
   }
