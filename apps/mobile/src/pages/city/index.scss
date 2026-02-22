@@ -6,17 +6,17 @@
 }
 
 .city-search {
-  padding: 12px;
+  padding: 16px;
   background: #fff;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .city-locate {
-  width: 44px;
-  height: 36px;
-  border-radius: 18px;
+  width: 58px;
+  height: 50px;
+  border-radius: 25px;
   background: #f5f7fb;
   display: flex;
   flex-direction: column;
@@ -25,7 +25,7 @@
 }
 
 .city-locate-text {
-  font-size: 10px;
+  font-size: 16px;
   color: #1989fa;
   margin-top: 2px;
 }
@@ -37,13 +37,13 @@
 
 .city-location-result {
   margin: 0 12px 12px;
-  padding: 10px 12px;
+  padding: 14px 16px;
   background: #fff;
   border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 10px;
+  font-size: 18px;
   color: #333;
 }
 
@@ -69,33 +69,34 @@
 }
 
 .city-letter {
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: 12px 16px;
+  font-size: 18px;
   color: #666;
 }
 
 .city-item {
-  padding: 12px;
+  padding: 16px 18px;
   background: #fff;
   border-bottom: 1px solid #f0f0f0;
-  font-size: 14px;
+  font-size: 20px;
 }
 
 .city-index {
   position: fixed;
-  right: 6px;
-  top: 120px;
+  right: 8px;
+  top: 88px;
+  bottom: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
   z-index: 10;
 }
 
 .city-index-item {
-  font-size: 12px;
+  font-size: 18px;
   color: #1989fa;
-  padding: 2px 4px;
+  padding: 4px 6px;
 }
 
 .city-loading,
