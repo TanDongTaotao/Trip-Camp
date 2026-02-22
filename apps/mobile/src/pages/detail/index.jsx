@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { View, Text, Image, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { Swiper, SwiperItem, Rate, Tag, Divider, Button, Skeleton } from '@nutui/nutui-react-taro'
+import { Swiper, SwiperItem, Rate, Tag, Divider, Button, Skeleton, Calendar } from '@nutui/nutui-react-taro'
 import { Location, Share } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
 import './index.scss'
@@ -11,6 +11,8 @@ export default function Detail() {
   const { id, checkIn, checkOut } = router.params
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [dateRange, setDateRange] = useState(['', ''])
+  const [showCalendar, setShowCalendar] = useState(false)
 
   const calcNights = (startStr, endStr) => {
     if (!startStr || !endStr) return ''
@@ -23,11 +25,36 @@ export default function Detail() {
     return `${nights}晚`
   }
 
+  const formatDate = (d) => {
+    if (!d) return ''
+    if (typeof d === 'string') return d
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  const parseCalendarRange = (param) => {
+    if (!param || param.length < 2) return ['', '']
+    if (Array.isArray(param[0]) && param[0][3]) {
+      return [param[0][3], param[1][3]]
+    }
+    return [formatDate(param[0]), formatDate(param[1])]
+  }
+
   useEffect(() => {
     if (id) {
       fetchDetail(id)
     }
   }, [id])
+
+  useEffect(() => {
+    if (checkIn && checkOut) {
+      setDateRange([decodeURIComponent(checkIn), decodeURIComponent(checkOut)])
+      return
+    }
+    const today = new Date()
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    setDateRange([formatDate(today), formatDate(tomorrow)])
+  }, [checkIn, checkOut])
 
   const fetchDetail = async (hotelId) => {
     try {
@@ -73,7 +100,7 @@ export default function Detail() {
   const sortedRoomTypes = Array.isArray(detail.roomTypes)
     ? [...detail.roomTypes].sort((a, b) => Number(a?.price) - Number(b?.price))
     : []
-  const nightsText = calcNights(checkIn, checkOut)
+  const nightsText = calcNights(dateRange[0], dateRange[1])
 
   return (
     <View className='detail-page' style={{ paddingBottom: '80px', background: '#f5f5f5', minHeight: '100vh' }}>
@@ -114,17 +141,20 @@ export default function Detail() {
         </View>
       </View>
 
-      {checkIn && checkOut && nightsText && (
-        <View style={{ background: '#fff', marginBottom: '10px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {dateRange[0] && dateRange[1] && nightsText && (
+        <View
+          style={{ background: '#fff', marginBottom: '10px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+          onClick={() => setShowCalendar(true)}
+        >
           <View>
             <View style={{ fontSize: '14px', color: '#666' }}>入住离店</View>
             <View style={{ marginTop: '4px', fontSize: '14px', fontWeight: 'bold' }}>
-              {checkIn} 至 {checkOut}
+              {dateRange[0]} 至 {dateRange[1]}
             </View>
           </View>
           <View style={{ textAlign: 'right' }}>
             <View style={{ fontSize: '12px', color: '#999' }}>共 {nightsText}</View>
-            <View style={{ fontSize: '12px', color: '#1989fa', marginTop: '4px' }}>修改日期请返回列表页</View>
+            <View style={{ fontSize: '12px', color: '#1989fa', marginTop: '4px' }}>点击修改日期</View>
           </View>
         </View>
       )}
@@ -182,6 +212,23 @@ export default function Detail() {
         </View>
         <Button type="primary" block style={{ flex: 1 }}>查看可用房间</Button>
       </View>
+
+      <Calendar
+        visible={showCalendar}
+        type="range"
+        title="请选择入住离店日期"
+        startDate={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
+        endDate={`${new Date().getFullYear() + 1}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
+        defaultValue={dateRange}
+        onClose={() => setShowCalendar(false)}
+        onConfirm={(param) => {
+          const [startStr, endStr] = parseCalendarRange(param)
+          if (startStr && endStr) {
+            setDateRange([startStr, endStr])
+          }
+          setShowCalendar(false)
+        }}
+      />
     </View>
   )
 }
