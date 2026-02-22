@@ -28,3 +28,12 @@
 .btn-logout {
   margin-top: 10px;
 }
+
+.tag-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.tag-scroll::-webkit-scrollbar {
+  display: none;
+}

@@ -166,7 +166,7 @@ export default function Detail() {
           )}
         </View>
         {detail.tags && detail.tags.length > 0 && (
-          <ScrollView scrollX style={{ width: '100%', marginBottom: '10px' }}>
+          <ScrollView scrollX className='tag-scroll' style={{ width: '100%', marginBottom: '10px' }}>
             <View style={{ display: 'inline-flex', gap: '10px', flexWrap: 'nowrap' }}>
               {detail.tags.map((tag, idx) => (
                 <View key={`${tag}-${idx}`} style={{ display: 'inline-flex', alignItems: 'center', height: '32px', padding: '0 12px', borderRadius: '16px', background: '#f5f5f5', border: '1px solid #eee', fontSize: '13px', fontWeight: 'bold', color: '#333', flexShrink: 0 }}>

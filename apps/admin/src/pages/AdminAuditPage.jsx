@@ -255,12 +255,15 @@ const AdminAuditPage = () => {
     {
       title: '操作',
       key: 'action',
+      width: 220,
+      align: 'center',
       render: (_, record) => (
-        <Space size="middle">
+        <Space size="small" wrap>
           {record.auditStatus === 'pending' && (
             <>
               <Button
                 type="primary"
+                size="small"
                 icon={<CheckCircleOutlined />}
                 onClick={() => openAuditModal(record, 'approve')}
                 loading={actionLoading}
@@ -269,6 +272,7 @@ const AdminAuditPage = () => {
               </Button>
               <Button
                 danger
+                size="small"
                 icon={<CloseCircleOutlined />}
                 onClick={() => openAuditModal(record, 'reject')}
                 loading={actionLoading}
@@ -281,6 +285,7 @@ const AdminAuditPage = () => {
             <>
               <Button
                 type="primary"
+                size="small"
                 icon={<CheckCircleOutlined />}
                 onClick={() => openAuditModal(record, 'approve')}
                 loading={actionLoading}
@@ -289,6 +294,7 @@ const AdminAuditPage = () => {
               </Button>
               <Button
                 danger
+                size="small"
                 icon={<CloseCircleOutlined />}
                 onClick={() => openAuditModal(record, 'reject')}
                 loading={actionLoading}
@@ -302,6 +308,7 @@ const AdminAuditPage = () => {
               {record.onlineStatus === 'offline' && (
                 <Button
                   type="primary"
+                  size="small"
                   icon={<UploadOutlined />}
                   onClick={() => handlePublish(record)}
                   loading={actionLoading}
@@ -311,6 +318,7 @@ const AdminAuditPage = () => {
               )}
               {record.onlineStatus === 'online' && (
                 <Button
+                  size="small"
                   icon={<DownloadOutlined />}
                   onClick={() => handleOffline(record)}
                   loading={actionLoading}

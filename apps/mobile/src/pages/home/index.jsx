@@ -250,7 +250,7 @@ export default function Home() {
             <Rate value={star} onChange={(val) => setStar(val)} />
           </View>
 
-          <ScrollView scrollX style={{ width: '100%' }}>
+          <ScrollView scrollX className='tag-scroll' style={{ width: '100%' }}>
             <View style={{ display: 'inline-flex', gap: '10px', paddingBottom: '6px', flexWrap: 'nowrap' }}>
               {tagOptions.map((tag) => (
                 <Tag
