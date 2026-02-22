@@ -173,19 +173,22 @@ const MerchantHotelListPage = () => {
     {
       title: '操作',
       key: 'action',
+      width: 240,
+      align: 'center',
       render: (_, record) => (
-        <Space size="middle">
-          <Button icon={<EyeOutlined />} onClick={() => handleViewDetail(record)}>
+        <Space size="small" wrap>
+          <Button size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record)}>
             查看
           </Button>
           {(record.auditStatus === 'draft' || record.auditStatus === 'rejected') && (
-            <Button icon={<EditOutlined />} onClick={() => handleEdit(record)}>
+            <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
               编辑
             </Button>
           )}
           {(record.auditStatus === 'draft' || record.auditStatus === 'rejected') && (
             <Button
               type="primary"
+              size="small"
               icon={<CheckOutlined />}
               onClick={() => handleSubmitAudit(record)}
               loading={submitLoading}

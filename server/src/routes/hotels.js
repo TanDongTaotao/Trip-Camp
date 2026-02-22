@@ -17,6 +17,10 @@ function parseNumber(v) {
   return Number.isFinite(n) ? n : null
 }
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 // 列表卡片字段：按用户端展示最小必要字段输出
 function toHotelCard(hotel) {
   const images = Array.isArray(hotel.images) ? hotel.images : []
@@ -86,7 +90,11 @@ router.get('/', async (req, res, next) => {
     }
 
     // 精确筛选条件
-    if (city) filter.city = city
+    if (city) {
+      const normalizedCity = city.replace(/市$/, '')
+      const safeCity = escapeRegex(normalizedCity)
+      filter.city = new RegExp(`^${safeCity}(市)?$`)
+    }
     if (type) filter.type = type
     if (star !== null) filter.star = star
 
