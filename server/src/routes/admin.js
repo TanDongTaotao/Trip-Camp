@@ -43,6 +43,36 @@ function toAdminListItem(hotel) {
   }
 }
 
+function toAdminDetail(hotel) {
+  const images = Array.isArray(hotel.images) ? hotel.images : []
+  const roomTypes = Array.isArray(hotel.roomTypes) ? [...hotel.roomTypes] : []
+  roomTypes.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0))
+
+  const nearbyRaw = hotel.nearby || {}
+  const nearby = {
+    scenic: Array.isArray(nearbyRaw.scenic)
+      ? nearbyRaw.scenic
+      : Array.isArray(nearbyRaw.sights)
+        ? nearbyRaw.sights
+        : [],
+    transport: Array.isArray(nearbyRaw.transport) ? nearbyRaw.transport : [],
+    mall: Array.isArray(nearbyRaw.mall) ? nearbyRaw.mall : [],
+  }
+
+  return {
+    ...toAdminListItem(hotel),
+    nameEn: hotel.nameEn || '',
+    openTime: hotel.openTime || '',
+    images,
+    bannerText: hotel.bannerText || '',
+    roomTypes,
+    nearby,
+    discounts: Array.isArray(hotel.discounts) ? hotel.discounts : [],
+    tags: Array.isArray(hotel.tags) ? hotel.tags : [],
+    updatePayload: hotel.updatePayload || null,
+  }
+}
+
 function assertObjectId(id) {
   const normalized = normalizeString(id)
   if (!mongoose.Types.ObjectId.isValid(normalized)) {
@@ -88,6 +118,38 @@ router.get('/hotels', requireAuth, requireRole('admin'), async (req, res, next) 
       pageSize,
       total,
     })
+  } catch (e) {
+    next(e)
+  }
+})
+
+router.get('/stats', requireAuth, requireRole('admin'), async (req, res, next) => {
+  try {
+    const baseFilter = { deletedAt: null }
+    const [onlineCount, offlineCount, pendingCount] = await Promise.all([
+      Hotel.countDocuments({ ...baseFilter, auditStatus: 'approved', onlineStatus: 'online' }),
+      Hotel.countDocuments({ ...baseFilter, auditStatus: 'approved', onlineStatus: 'offline' }),
+      Hotel.countDocuments({ ...baseFilter, $or: [{ auditStatus: 'pending' }, { updateStatus: 'pending' }] }),
+    ])
+
+    res.json({
+      onlineCount,
+      offlineCount,
+      pendingCount,
+    })
+  } catch (e) {
+    next(e)
+  }
+})
+
+router.get('/hotels/:id', requireAuth, requireRole('admin'), async (req, res, next) => {
+  try {
+    const id = assertObjectId(req.params.id)
+    const hotel = await Hotel.findOne({ _id: id, deletedAt: null }).lean()
+    if (!hotel) {
+      throw new AppError({ status: 404, code: 'NOT_FOUND', message: 'Hotel not found' })
+    }
+    res.json({ hotel: toAdminDetail(hotel) })
   } catch (e) {
     next(e)
   }

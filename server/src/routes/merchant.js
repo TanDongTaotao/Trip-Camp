@@ -280,6 +280,16 @@ router.get('/hotels', requireAuth, requireRole('merchant'), async (req, res, nex
   }
 })
 
+router.get('/stats', requireAuth, requireRole('merchant'), async (req, res, next) => {
+  try {
+    const ownerId = req.user && req.user.id
+    const total = await Hotel.countDocuments({ ownerId, deletedAt: null })
+    res.json({ total })
+  } catch (e) {
+    next(e)
+  }
+})
+
 // GET /api/v1/merchant/hotels/:id
 // - 查询商户自己的某个酒店（草稿/待审核/已拒绝等也可见）
 router.get('/hotels/:id', requireAuth, requireRole('merchant'), async (req, res, next) => {
@@ -387,6 +397,38 @@ router.put('/hotels/:id', requireAuth, requireRole('merchant'), async (req, res,
   }
 })
 
+// POST /api/v1/merchant/hotels/:id/offline
+// - approved + online -> offline（商户自主下线）
+router.post('/hotels/:id/offline', requireAuth, requireRole('merchant'), async (req, res, next) => {
+  try {
+    const ownerId = req.user && req.user.id
+    const id = assertObjectId(req.params.id)
+
+    const hotel = await Hotel.findOne({ _id: id, deletedAt: null })
+    if (!hotel) {
+      throw new AppError({ status: 404, code: 'NOT_FOUND', message: 'Hotel not found' })
+    }
+    if (String(hotel.ownerId || '') !== String(ownerId || '')) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Permission denied' })
+    }
+
+    if (hotel.auditStatus !== 'approved' || hotel.onlineStatus !== 'online') {
+      throw new AppError({
+        status: 409,
+        code: 'INVALID_STATE',
+        message: 'Hotel cannot be offlined in current state',
+        details: { auditStatus: hotel.auditStatus, onlineStatus: hotel.onlineStatus },
+      })
+    }
+
+    hotel.onlineStatus = 'offline'
+    await hotel.save()
+    res.json({ hotel: toHotelManageItem(hotel.toObject()) })
+  } catch (e) {
+    next(e)
+  }
+})
+
 // POST /api/v1/merchant/hotels/:id/submit
 // - 提交审核（draft/rejected -> pending）
 router.post('/hotels/:id/submit', requireAuth, requireRole('merchant'), async (req, res, next) => {
@@ -406,6 +448,14 @@ router.post('/hotels/:id/submit', requireAuth, requireRole('merchant'), async (r
       hotel.auditStatus = 'pending'
       hotel.rejectReason = null
       hotel.onlineStatus = 'offline'
+      await hotel.save()
+      res.json({ hotel: toHotelManageItem(hotel.toObject()) })
+      return
+    }
+
+    if (hotel.auditStatus === 'approved' && hotel.onlineStatus === 'offline') {
+      hotel.auditStatus = 'pending'
+      hotel.rejectReason = null
       await hotel.save()
       res.json({ hotel: toHotelManageItem(hotel.toObject()) })
       return

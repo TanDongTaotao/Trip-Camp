@@ -6,7 +6,7 @@
 */
 import { useState, useEffect, useCallback } from 'react'
 import { Typography, Card, Button, Space, Table, Tag, message, Modal, Input, Select } from 'antd'
-import { EditOutlined, CheckOutlined, EyeOutlined, ArrowLeftOutlined, SearchOutlined } from '@ant-design/icons'
+import { EditOutlined, CheckOutlined, EyeOutlined, ArrowLeftOutlined, SearchOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons'
 import api from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 
@@ -93,6 +93,34 @@ const MerchantHotelListPage = () => {
     } catch (error) {
       message.error('提交修改失败')
       console.error('提交修改失败:', error)
+    } finally {
+      setSubmitLoading(false)
+    }
+  }
+
+  const handleOffline = async (hotel) => {
+    setSubmitLoading(true)
+    try {
+      await api.post(`/merchant/hotels/${hotel.id}/offline`)
+      message.success('下线成功')
+      loadHotels()
+    } catch (error) {
+      message.error('下线失败')
+      console.error('下线失败:', error)
+    } finally {
+      setSubmitLoading(false)
+    }
+  }
+
+  const handleSubmitOnline = async (hotel) => {
+    setSubmitLoading(true)
+    try {
+      await api.post(`/merchant/hotels/${hotel.id}/submit`)
+      message.success('申请上线成功')
+      loadHotels()
+    } catch (error) {
+      message.error('申请上线失败')
+      console.error('申请上线失败:', error)
     } finally {
       setSubmitLoading(false)
     }
@@ -248,6 +276,27 @@ const MerchantHotelListPage = () => {
                 {record.updateStatus === 'rejected' ? '重新提交修改' : '提交修改'}
               </Button>
             )}
+          {record.auditStatus === 'approved' && record.onlineStatus === 'online' && (
+            <Button
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={() => handleOffline(record)}
+              loading={submitLoading}
+            >
+              下线
+            </Button>
+          )}
+          {record.auditStatus === 'approved' && record.onlineStatus === 'offline' && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<UploadOutlined />}
+              onClick={() => handleSubmitOnline(record)}
+              loading={submitLoading}
+            >
+              申请上线
+            </Button>
+          )}
         </Space>
       )
     }
@@ -298,6 +347,7 @@ const MerchantHotelListPage = () => {
           dataSource={hotels}
           rowKey="id"
           loading={loading}
+          scroll={{ x: 1300 }}
           pagination={{
             current: currentPage,
             pageSize: pageSize,

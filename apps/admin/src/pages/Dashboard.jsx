@@ -15,6 +15,8 @@ const { Title, Paragraph } = Typography
 const Dashboard = () => {
   const [userInfo, setUserInfo] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(false)
+  const [stats, setStats] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -39,6 +41,33 @@ const Dashboard = () => {
 
     fetchUserInfo()
   }, [])
+
+  useEffect(() => {
+    const role = userInfo?.role
+    if (!role) return
+    const fetchStats = async () => {
+      setStatsLoading(true)
+      try {
+        if (role === 'merchant') {
+          const response = await api.get('/merchant/stats', { params: { t: Date.now() } })
+          setStats(response)
+          return
+        }
+        if (role === 'admin') {
+          const response = await api.get('/admin/stats', { params: { t: Date.now() } })
+          setStats(response)
+          return
+        }
+        setStats(null)
+      } catch (error) {
+        message.error('获取统计数据失败：' + (error.response?.data?.message || error.message))
+        setStats(null)
+      } finally {
+        setStatsLoading(false)
+      }
+    }
+    fetchStats()
+  }, [userInfo?.role])
 
   const handleQuickAddHotel = () => {
     if (userInfo?.role === 'merchant') {
@@ -89,8 +118,19 @@ const Dashboard = () => {
         </Col>
         <Col span={8}>
           <Card title="数据统计" variant="borderless">
-            <p>酒店总数：0</p>
-            <p>待审核：0</p>
+            {statsLoading ? (
+              <Spin size="small" />
+            ) : userInfo?.role === 'merchant' ? (
+              <p>我的酒店总数：{typeof stats?.total === 'number' ? stats.total : 0}</p>
+            ) : userInfo?.role === 'admin' ? (
+              <>
+                <p>已上线酒店数：{typeof stats?.onlineCount === 'number' ? stats.onlineCount : 0}</p>
+                <p>待上线酒店数：{typeof stats?.offlineCount === 'number' ? stats.offlineCount : 0}</p>
+                <p>待审核数：{typeof stats?.pendingCount === 'number' ? stats.pendingCount : 0}</p>
+              </>
+            ) : (
+              <Paragraph type="secondary">暂无可用统计数据</Paragraph>
+            )}
           </Card>
         </Col>
         <Col span={8}>

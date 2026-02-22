@@ -6,8 +6,8 @@
   - 实现发布/下线功能
 */
 import { useState, useEffect, useCallback } from 'react'
-import { Typography, Card, Button, Space, Table, Tag, message, Modal, Input, Select, Form } from 'antd'
-import { ArrowLeftOutlined, SearchOutlined, CheckCircleOutlined, CloseCircleOutlined, UploadOutlined, DownloadOutlined } from '@ant-design/icons'
+import { Typography, Card, Button, Space, Table, Tag, message, Modal, Input, Select, Form, Image, Divider, Spin } from 'antd'
+import { ArrowLeftOutlined, SearchOutlined, CheckCircleOutlined, CloseCircleOutlined, UploadOutlined, DownloadOutlined, EyeOutlined } from '@ant-design/icons'
 import api from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 
@@ -37,6 +37,9 @@ const AdminAuditPage = () => {
   const [auditModalVisible, setAuditModalVisible] = useState(false)
   const [auditAction, setAuditAction] = useState('') // approve 或 reject
   const [selectedHotel, setSelectedHotel] = useState(null)
+  const [detailModalVisible, setDetailModalVisible] = useState(false)
+  const [detailHotel, setDetailHotel] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   // 拒绝原因表单
   const [rejectForm] = Form.useForm()
@@ -150,6 +153,27 @@ const AdminAuditPage = () => {
     rejectForm.resetFields()
   }
 
+  const handleViewDetail = async (hotel) => {
+    setDetailModalVisible(true)
+    setDetailHotel(null)
+    setDetailLoading(true)
+    try {
+      const response = await api.get(`/admin/hotels/${hotel.id}`)
+      setDetailHotel(response.hotel || response)
+    } catch (error) {
+      message.error('获取酒店详情失败')
+      setDetailHotel(null)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  const openAuditFromDetail = (action) => {
+    if (!detailHotel) return
+    setDetailModalVisible(false)
+    openAuditModal(detailHotel, action)
+  }
+
   // 处理分页变化
   const handlePageChange = (page, size) => {
     setCurrentPage(page)
@@ -181,6 +205,32 @@ const AdminAuditPage = () => {
     pending: { color: 'blue', text: '修改待审' },
     rejected: { color: 'red', text: '修改被拒' }
   }
+
+  const detailUpdatePayload =
+    detailHotel &&
+      detailHotel.updateStatus === 'pending' &&
+      detailHotel.updatePayload &&
+      typeof detailHotel.updatePayload === 'object'
+      ? detailHotel.updatePayload
+      : null
+  const displayHotel = detailHotel && detailUpdatePayload ? { ...detailHotel, ...detailUpdatePayload } : detailHotel
+
+  const detailImages = displayHotel
+    ? (Array.isArray(displayHotel.images) && displayHotel.images.length > 0
+      ? displayHotel.images
+      : displayHotel.coverImage
+        ? [displayHotel.coverImage]
+        : [])
+    : []
+  const detailTags = displayHotel && Array.isArray(displayHotel.tags) ? displayHotel.tags : []
+  const detailRoomTypes = displayHotel && Array.isArray(displayHotel.roomTypes) ? displayHotel.roomTypes : []
+  const detailDiscounts = displayHotel && Array.isArray(displayHotel.discounts) ? displayHotel.discounts : []
+  const detailNearby = displayHotel && displayHotel.nearby ? displayHotel.nearby : {}
+
+  const canAuditInDetail =
+    detailHotel && (detailHotel.auditStatus === 'pending' || detailHotel.updateStatus === 'pending')
+  const detailApproveLabel = detailHotel?.auditStatus === 'pending' ? '通过审核' : '修改通过'
+  const detailRejectLabel = detailHotel?.auditStatus === 'pending' ? '拒绝审核' : '修改拒绝'
 
   // 列配置
   const columns = [
@@ -259,6 +309,9 @@ const AdminAuditPage = () => {
       align: 'center',
       render: (_, record) => (
         <Space size="small" wrap>
+          <Button size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record)}>
+            查看
+          </Button>
           {record.auditStatus === 'pending' && (
             <>
               <Button
@@ -387,6 +440,7 @@ const AdminAuditPage = () => {
           dataSource={hotels}
           rowKey="id"
           loading={loading}
+          scroll={{ x: 1400 }}
           pagination={{
             current: currentPage,
             pageSize: pageSize,
@@ -427,6 +481,202 @@ const AdminAuditPage = () => {
             </Paragraph>
           )}
         </Form>
+      </Modal>
+
+      <Modal
+        title="酒店详情"
+        open={detailModalVisible}
+        onCancel={() => setDetailModalVisible(false)}
+        width={920}
+        bodyStyle={{ maxHeight: '70vh', overflowY: 'auto' }}
+        footer={[
+          <Button key="close" onClick={() => setDetailModalVisible(false)}>
+            关闭
+          </Button>,
+          canAuditInDetail && (
+            <Button key="reject" danger onClick={() => openAuditFromDetail('reject')} loading={actionLoading}>
+              {detailRejectLabel}
+            </Button>
+          ),
+          canAuditInDetail && (
+            <Button key="approve" type="primary" onClick={() => openAuditFromDetail('approve')} loading={actionLoading}>
+              {detailApproveLabel}
+            </Button>
+          )
+        ].filter(Boolean)}
+      >
+        {detailLoading ? (
+          <Spin size="small" />
+        ) : displayHotel ? (
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Divider orientation="left">基础信息</Divider>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>酒店名称：</span>
+              <span>
+                {displayHotel.nameCn}
+                {displayHotel.nameEn ? ` (${displayHotel.nameEn})` : ''}
+              </span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>城市：</span>
+              <span>{displayHotel.city}</span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>地址：</span>
+              <span>{displayHotel.address}</span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>星级：</span>
+              <span>{displayHotel.star}星</span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>最低价格：</span>
+              <span>¥{displayHotel.minPrice}</span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>酒店类型：</span>
+              <span>{displayHotel.type || '-'}</span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>开业时间：</span>
+              <span>{displayHotel.openTime || '-'}</span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>酒店简介：</span>
+              <span>{displayHotel.bannerText || '-'}</span>
+            </Space>
+
+            <Divider orientation="left">审核信息</Divider>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>审核状态：</span>
+              <span>{auditStatusConfig[detailHotel.auditStatus]?.text || detailHotel.auditStatus}</span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>上下线状态：</span>
+              <span>{onlineStatusConfig[detailHotel.onlineStatus]?.text || detailHotel.onlineStatus}</span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>修改状态：</span>
+              <span>{updateStatusConfig[detailHotel.updateStatus]?.text || detailHotel.updateStatus}</span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>被拒原因：</span>
+              <span>{detailHotel.rejectReason || '-'}</span>
+            </Space>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>修改拒绝原因：</span>
+              <span>{detailHotel.updateRejectReason || '-'}</span>
+            </Space>
+
+            <Divider orientation="left">标签</Divider>
+            {detailTags.length > 0 ? (
+              <Space wrap>
+                {detailTags.map((tag, index) => (
+                  <Tag key={`${tag}-${index}`}>{tag}</Tag>
+                ))}
+              </Space>
+            ) : (
+              <Paragraph type="secondary">-</Paragraph>
+            )}
+
+            <Divider orientation="left">图片</Divider>
+            <Space size="middle" style={{ width: '100%' }}>
+              <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>缩略图：</span>
+              {displayHotel.coverImage ? <Image width={140} src={displayHotel.coverImage} /> : <span>-</span>}
+            </Space>
+            {detailImages.length > 0 ? (
+              <Image.PreviewGroup>
+                <Space wrap>
+                  {detailImages.map((url, index) => (
+                    <Image key={`${url}-${index}`} width={140} src={url} />
+                  ))}
+                </Space>
+              </Image.PreviewGroup>
+            ) : (
+              <Paragraph type="secondary">-</Paragraph>
+            )}
+
+            <Divider orientation="left">房型</Divider>
+            {detailRoomTypes.length > 0 ? (
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                {detailRoomTypes.map((room, index) => (
+                  <div key={`${room.name || 'room'}-${index}`} style={{ border: '1px solid #f0f0f0', padding: 12, borderRadius: 6 }}>
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                      <Space size="middle" style={{ width: '100%' }}>
+                        <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>房型名称：</span>
+                        <span>{room.name || '-'}</span>
+                      </Space>
+                      <Space size="middle" style={{ width: '100%' }}>
+                        <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>价格：</span>
+                        <span>¥{room.price || 0}</span>
+                      </Space>
+                      <Space size="middle" style={{ width: '100%' }}>
+                        <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>设施：</span>
+                        <span>{Array.isArray(room.amenities) && room.amenities.length > 0 ? room.amenities.join(' / ') : '-'}</span>
+                      </Space>
+                      <Space size="middle" style={{ width: '100%' }}>
+                        <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>房型图片：</span>
+                        {Array.isArray(room.images) && room.images.length > 0 ? (
+                          <Image.PreviewGroup>
+                            <Space wrap>
+                              {room.images.map((url, idx) => (
+                                <Image key={`${url}-${idx}`} width={120} src={url} />
+                              ))}
+                            </Space>
+                          </Image.PreviewGroup>
+                        ) : (
+                          <span>-</span>
+                        )}
+                      </Space>
+                    </Space>
+                  </div>
+                ))}
+              </Space>
+            ) : (
+              <Paragraph type="secondary">-</Paragraph>
+            )}
+
+            <Divider orientation="left">周边</Divider>
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <Space size="middle" style={{ width: '100%' }}>
+                <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>景点：</span>
+                <span>{Array.isArray(detailNearby.scenic) && detailNearby.scenic.length > 0 ? detailNearby.scenic.join(' / ') : '-'}</span>
+              </Space>
+              <Space size="middle" style={{ width: '100%' }}>
+                <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>交通：</span>
+                <span>{Array.isArray(detailNearby.transport) && detailNearby.transport.length > 0 ? detailNearby.transport.join(' / ') : '-'}</span>
+              </Space>
+              <Space size="middle" style={{ width: '100%' }}>
+                <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>商场：</span>
+                <span>{Array.isArray(detailNearby.mall) && detailNearby.mall.length > 0 ? detailNearby.mall.join(' / ') : '-'}</span>
+              </Space>
+            </Space>
+
+            <Divider orientation="left">优惠</Divider>
+            {detailDiscounts.length > 0 ? (
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                {detailDiscounts.map((discount, index) => (
+                  <div key={`${discount.title || 'discount'}-${index}`} style={{ border: '1px solid #f0f0f0', padding: 12, borderRadius: 6 }}>
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                      <Space size="middle" style={{ width: '100%' }}>
+                        <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>标题：</span>
+                        <span>{discount.title || '-'}</span>
+                      </Space>
+                      <Space size="middle" style={{ width: '100%' }}>
+                        <span style={{ fontWeight: 'bold', width: 120, display: 'inline-block' }}>描述：</span>
+                        <span>{discount.desc || '-'}</span>
+                      </Space>
+                    </Space>
+                  </div>
+                ))}
+              </Space>
+            ) : (
+              <Paragraph type="secondary">-</Paragraph>
+            )}
+          </Space>
+        ) : (
+          <Paragraph type="secondary">暂无详情</Paragraph>
+        )}
       </Modal>
     </div>
   )

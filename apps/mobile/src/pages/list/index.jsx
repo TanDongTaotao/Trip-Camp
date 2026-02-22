@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { View, Image, ScrollView, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { Tabs, Tag, Rate, Loading, Empty, Skeleton, Calendar, Input } from '@nutui/nutui-react-taro'
+import { Tag, Rate, Loading, Empty, Skeleton, Calendar, Input } from '@nutui/nutui-react-taro'
 import { ArrowLeft, Search, Location } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
 import './index.scss'
@@ -34,6 +34,8 @@ export default function List() {
   const [showCalendar, setShowCalendar] = useState(false)
   const [dateRange, setDateRange] = useState(['', ''])
   const [keywordInput, setKeywordInput] = useState('')
+  const [pricePanelOpen, setPricePanelOpen] = useState(false)
+  const [starPanelOpen, setStarPanelOpen] = useState(false)
 
   // 查询参数
   const [queryParams, setQueryParams] = useState({
@@ -42,7 +44,9 @@ export default function List() {
     checkIn: '',
     checkOut: '',
     star: '',
-    tags: ''
+    tags: '',
+    minPrice: '',
+    maxPrice: ''
   })
 
   // 初始化参数
@@ -54,6 +58,8 @@ export default function List() {
     const checkOut = params.checkOut ? decodeURIComponent(params.checkOut) : ''
     const star = params.star ? decodeURIComponent(params.star) : ''
     const tags = params.tags ? decodeURIComponent(params.tags) : ''
+    const minPrice = params.minPrice ? Number(decodeURIComponent(params.minPrice)) : ''
+    const maxPrice = params.maxPrice ? Number(decodeURIComponent(params.maxPrice)) : ''
 
     setQueryParams({
       city,
@@ -61,9 +67,11 @@ export default function List() {
       checkIn,
       checkOut,
       star,
-      tags
+      tags,
+      minPrice,
+      maxPrice
     })
-    fetchList(1, city, keyword, star, '', tags)
+    fetchList(1, city, keyword, star, '', tags, minPrice, maxPrice)
   }, [])
 
   useEffect(() => {
@@ -76,7 +84,7 @@ export default function List() {
     setKeywordInput(queryParams.keyword || '')
   }, [queryParams.keyword])
 
-  const fetchList = async (pageNum, cityStr, keyStr, starVal, sortVal, tagsStr) => {
+  const fetchList = async (pageNum, cityStr, keyStr, starVal, sortVal, tagsStr, minPriceVal, maxPriceVal) => {
     if (inFlightRef.current && pageNum !== 1) return
     const seq = ++requestSeqRef.current
     inFlightRef.current = true
@@ -97,7 +105,9 @@ export default function List() {
           keyword: keyStr,
           star: starVal,
           sort: sortVal,
-          tags: tagsStr
+          tags: tagsStr,
+          minPrice: minPriceVal,
+          maxPrice: maxPriceVal
         }
       })
 
@@ -135,7 +145,16 @@ export default function List() {
   // 上拉加载
   const handleScrollToLower = () => {
     if (hasMore && !loading) {
-      fetchList(page + 1, queryParams.city, queryParams.keyword, queryParams.star, sort, queryParams.tags)
+      fetchList(
+        page + 1,
+        queryParams.city,
+        queryParams.keyword,
+        queryParams.star,
+        sort,
+        queryParams.tags,
+        queryParams.minPrice,
+        queryParams.maxPrice
+      )
     }
   }
 
@@ -144,7 +163,16 @@ export default function List() {
     setSort(val)
     setPage(1)
     setHasMore(true)
-    fetchList(1, queryParams.city, queryParams.keyword, queryParams.star, val, queryParams.tags)
+    fetchList(
+      1,
+      queryParams.city,
+      queryParams.keyword,
+      queryParams.star,
+      val,
+      queryParams.tags,
+      queryParams.minPrice,
+      queryParams.maxPrice
+    )
   }
 
   const updateQueryAndFetch = (patch) => {
@@ -152,7 +180,16 @@ export default function List() {
     setQueryParams(next)
     setPage(1)
     setHasMore(true)
-    fetchList(1, next.city, next.keyword, next.star, sort, next.tags)
+    fetchList(
+      1,
+      next.city,
+      next.keyword,
+      next.star,
+      sort,
+      next.tags,
+      next.minPrice,
+      next.maxPrice
+    )
   }
 
   const handleCitySelect = () => {
@@ -192,6 +229,25 @@ export default function List() {
     ? queryParams.tags.split(',').map((t) => t.trim()).filter(Boolean)
     : []
   const shortDate = (str) => (str && str.length >= 10 ? str.slice(5) : str)
+  const priceRanges = [
+    { label: '0-150', min: 0, max: 150 },
+    { label: '150-300', min: 150, max: 300 },
+    { label: '300-450', min: 300, max: 450 },
+    { label: '450-600', min: 450, max: 600 },
+    { label: '600-1000', min: 600, max: 1000 },
+    { label: '1000以上', min: 1000, max: '' }
+  ]
+  const priceSortLabel = sort === 'priceAsc' ? '价格低→高' : sort === 'priceDesc' ? '价格高→低' : '价格'
+  const isPriceActive = sort === 'priceAsc' || sort === 'priceDesc'
+  const starOptions = [
+    { label: '不限', value: '' },
+    { label: '5星', value: 5 },
+    { label: '4星', value: 4 },
+    { label: '3星', value: 3 },
+    { label: '2星', value: 2 },
+    { label: '1星', value: 1 }
+  ]
+  const starLabel = queryParams.star ? `${queryParams.star}星` : '星级'
 
   return (
     <View className='list-page' style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f5f5f5' }}>
@@ -242,11 +298,144 @@ export default function List() {
 
       {/* 排序筛选栏 */}
       <View style={{ background: '#fff', borderBottom: '1px solid #eee' }}>
-        <Tabs value={sort} onChange={(val) => handleSortChange(val)} activeColor="#1989fa">
-          <Tabs.TabPane title="推荐" value="" />
-          <Tabs.TabPane title="价格低→高" value="priceAsc" />
-          <Tabs.TabPane title="价格高→低" value="priceDesc" />
-        </Tabs>
+        <View style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px' }}>
+          <Tag
+            style={{
+              fontSize: '12px',
+              padding: '6px 0',
+              flex: 1,
+              textAlign: 'center',
+              background: '#fff',
+              color: '#333'
+            }}
+            onClick={() => {
+              setPricePanelOpen(false)
+              setStarPanelOpen(false)
+              handleSortChange('')
+            }}
+          >
+            推荐
+          </Tag>
+          <Tag
+            style={{
+              fontSize: '12px',
+              padding: '6px 0',
+              flex: 1,
+              textAlign: 'center',
+              background: '#fff',
+              color: '#333'
+            }}
+            onClick={() => {
+              setStarPanelOpen(false)
+              setPricePanelOpen((prev) => !prev)
+            }}
+          >
+            <View style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Text>{priceSortLabel}</Text>
+              <Text style={{ fontSize: '10px', color: '#666' }}>{pricePanelOpen ? '▲' : '▼'}</Text>
+            </View>
+          </Tag>
+          <Tag
+            style={{
+              fontSize: '12px',
+              padding: '6px 0',
+              flex: 1,
+              textAlign: 'center',
+              background: '#fff',
+              color: '#333'
+            }}
+            onClick={() => {
+              setPricePanelOpen(false)
+              setStarPanelOpen((prev) => !prev)
+            }}
+          >
+            <View style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Text>{starLabel}</Text>
+              <Text style={{ fontSize: '10px', color: '#666' }}>{starPanelOpen ? '▲' : '▼'}</Text>
+            </View>
+          </Tag>
+        </View>
+        {pricePanelOpen && (
+          <View style={{ padding: '10px 12px', borderTop: '1px solid #f0f0f0' }}>
+            <View style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              {[
+                { label: '价格低→高', value: 'priceAsc' },
+                { label: '价格高→低', value: 'priceDesc' }
+              ].map((item) => (
+                <View
+                  key={item.value}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '14px',
+                    background: sort === item.value ? '#E6F7FF' : '#F5F5F5',
+                    color: sort === item.value ? '#1890ff' : '#666',
+                    fontSize: '12px'
+                  }}
+                  onClick={() => {
+                    handleSortChange(item.value)
+                    setPricePanelOpen(false)
+                  }}
+                >
+                  {item.label}
+                </View>
+              ))}
+            </View>
+            <View style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>价格区间</View>
+            <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {priceRanges.map((range) => {
+                const isActive = queryParams.minPrice === range.min && queryParams.maxPrice === range.max
+                return (
+                  <View
+                    key={range.label}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '14px',
+                      background: isActive ? '#E6F7FF' : '#F5F5F5',
+                      color: isActive ? '#1890ff' : '#666',
+                      fontSize: '12px'
+                    }}
+                    onClick={() => {
+                      if (isActive) {
+                        updateQueryAndFetch({ minPrice: '', maxPrice: '' })
+                      } else {
+                        updateQueryAndFetch({ minPrice: range.min, maxPrice: range.max })
+                      }
+                    }}
+                  >
+                    {range.label}
+                  </View>
+                )
+              })}
+            </View>
+          </View>
+        )}
+        {starPanelOpen && (
+          <View style={{ padding: '10px 12px', borderTop: '1px solid #f0f0f0' }}>
+            <View style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {starOptions.map((item) => {
+                const isActive = queryParams.star === item.value
+                return (
+                  <View
+                    key={item.label}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '14px',
+                      background: isActive ? '#E6F7FF' : '#F5F5F5',
+                      color: isActive ? '#1890ff' : '#666',
+                      fontSize: '12px'
+                    }}
+                    onClick={() => {
+                      updateQueryAndFetch({ star: item.value })
+                      setStarPanelOpen(false)
+                    }}
+                  >
+                    {item.label}
+                  </View>
+                )
+              })}
+            </View>
+          </View>
+        )}
       </View>
 
       {activeTags.length > 0 && (
@@ -281,7 +470,16 @@ export default function List() {
               <Text
                 style={{ color: '#1989fa' }}
                 onClick={() =>
-                  fetchList(1, queryParams.city, queryParams.keyword, queryParams.star, sort, queryParams.tags)
+                  fetchList(
+                    1,
+                    queryParams.city,
+                    queryParams.keyword,
+                    queryParams.star,
+                    sort,
+                    queryParams.tags,
+                    queryParams.minPrice,
+                    queryParams.maxPrice
+                  )
                 }
               >
                 重新加载
