@@ -7,7 +7,7 @@ import { request } from '../../utils/request'
 import './index.scss'
 
 export default function Home() {
-  const [bannerHotelId, setBannerHotelId] = useState('')
+  const [bannerImages, setBannerImages] = useState([])
   const [searching, setSearching] = useState(false)
 
   // 查询状态
@@ -39,12 +39,21 @@ export default function Home() {
         const res = await request({
           url: '/hotels',
           method: 'GET',
-          data: { page: 1, pageSize: 1 },
+          data: { page: 1, pageSize: 20 },
         })
-        const first = res && Array.isArray(res.list) && res.list.length > 0 ? res.list[0] : null
-        setBannerHotelId(first ? first.id : '')
+        const list = Array.isArray(res?.list) ? res.list : []
+        const images = list.map((item) => item?.coverImage).filter(Boolean)
+        const uniqueImages = Array.from(new Set(images))
+        const shuffled = [...uniqueImages]
+        for (let i = shuffled.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1))
+          const temp = shuffled[i]
+          shuffled[i] = shuffled[j]
+          shuffled[j] = temp
+        }
+        setBannerImages(shuffled.slice(0, 2))
       } catch {
-        setBannerHotelId('')
+        setBannerImages([])
       }
     }
     fetchBannerHotel()
@@ -190,18 +199,19 @@ export default function Home() {
         lowerThreshold={80}
       >
         {/* 顶部 Banner */}
-        <Swiper defaultValue={0} loop autoPlay>
-          <SwiperItem>
-            <View style={{ height: '200px', background: '#1989fa', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '24px' }}>
-              Trip Camp Hotel
-            </View>
-          </SwiperItem>
-          <SwiperItem>
-            <View style={{ height: '200px', background: '#ff976a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '24px' }}>
-              Enjoy Your Stay
-            </View>
-          </SwiperItem>
-        </Swiper>
+        {bannerImages.length > 0 && (
+          <Swiper defaultValue={0} loop autoPlay>
+            {bannerImages.map((img, idx) => (
+              <SwiperItem key={`${img}-${idx}`}>
+                <Image
+                  src={img}
+                  style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                  mode="aspectFill"
+                />
+              </SwiperItem>
+            ))}
+          </Swiper>
+        )}
 
         {/* 查询表单区域 */}
         <View style={{ margin: '16px', padding: '16px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }}>
