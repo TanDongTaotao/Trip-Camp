@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { Button, Swiper, SwiperItem, Cell, Calendar, Input, Picker, Rate, Tag } from '@nutui/nutui-react-taro'
+import { Button, Swiper, SwiperItem, Cell, Calendar, Input, Rate, Tag } from '@nutui/nutui-react-taro'
 import { ArrowRight, Search, Location, Date as DateIcon } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
 import './index.scss'
@@ -12,21 +12,11 @@ export default function Home() {
 
   // 查询状态
   const [city, setCity] = useState('上海')
-  const [showCityPicker, setShowCityPicker] = useState(false)
   const [date, setDate] = useState(['2024-05-01', '2024-05-02']) // 默认日期，实际应动态获取
   const [showCalendar, setShowCalendar] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [star, setStar] = useState(0) // 0 表示不限
   const [selectedTags, setSelectedTags] = useState([])
-
-  // 城市选项
-  const cityOptions = [
-    { text: '上海', value: '上海' },
-    { text: '北京', value: '北京' },
-    { text: '广州', value: '广州' },
-    { text: '深圳', value: '深圳' },
-    { text: '杭州', value: '杭州' },
-  ]
 
   const tagOptions = ['亲子优选', '商务出行', '情侣出行', '豪华高星']
 
@@ -112,6 +102,19 @@ export default function Home() {
     Taro.navigateTo({ url: `/pages/detail/index?id=${bannerHotelId}&checkIn=${date[0]}&checkOut=${date[1]}` })
   }
 
+  const handleCitySelect = () => {
+    Taro.navigateTo({
+      url: `/pages/city/index?current=${encodeURIComponent(city || '')}`,
+      events: {
+        selectCity: (data) => {
+          if (data && data.city) {
+            setCity(data.city)
+          }
+        }
+      }
+    })
+  }
+
   return (
     <View className='home-page' style={{ paddingBottom: '20px', background: '#f5f5f5', minHeight: '100vh' }}>
       {/* 顶部 Banner */}
@@ -142,7 +145,7 @@ export default function Home() {
           description={city && city !== '' ? '查询目的地' : "选择目的地"}
           extra={<ArrowRight />}
           align="center"
-          onClick={() => setShowCityPicker(true)}
+          onClick={handleCitySelect}
         />
 
         {/* 日期选择 */}
@@ -196,21 +199,6 @@ export default function Home() {
           {searching ? '跳转中...' : '查找酒店'}
         </Button>
       </View>
-
-      {/* 弹窗组件 */}
-      <Picker
-        visible={showCityPicker}
-        options={[cityOptions]}
-        value={[city]}
-        onConfirm={(list, values) => {
-          // values[0] 是选中的值 (如 '北京')
-          // list[0] 是选中的对象 (如 {text:'北京', value:'北京'})
-          const selectedValue = values[0] ? values[0] : (list[0] ? list[0].value : '')
-          setCity(selectedValue)
-          setShowCityPicker(false)
-        }}
-        onClose={() => setShowCityPicker(false)}
-      />
 
       <Calendar
         visible={showCalendar}

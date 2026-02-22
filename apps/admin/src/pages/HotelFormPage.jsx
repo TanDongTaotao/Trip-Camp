@@ -23,6 +23,8 @@ const HotelFormPage = () => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [submitLoading, setSubmitLoading] = useState(false)
+  const [cityOptions, setCityOptions] = useState([])
+  const [cityLoading, setCityLoading] = useState(false)
 
   // 房型状态
   const [roomTypes, setRoomTypes] = useState([])
@@ -50,8 +52,10 @@ const HotelFormPage = () => {
         return
       }
       const { roomTypes: hotelRoomTypes, images, coverImage, ...rest } = hotel
+      const normalizedCity = rest.city ? rest.city.replace(/市$/, '') : rest.city
       form.setFieldsValue({
         ...rest,
+        city: normalizedCity,
         images: Array.isArray(images) ? images.join(',') : '',
         coverImage: coverImage || ''
       })
@@ -64,12 +68,27 @@ const HotelFormPage = () => {
     }
   }, [form, id, navigate])
 
+  const loadCityOptions = useCallback(async () => {
+    setCityLoading(true)
+    try {
+      const response = await api.get('/cities')
+      const list = Array.isArray(response?.list) ? response.list : []
+      setCityOptions(list)
+    } catch (error) {
+      message.error('加载城市列表失败')
+      console.error('加载城市列表失败:', error)
+    } finally {
+      setCityLoading(false)
+    }
+  }, [])
+
   // 初始化表单
   useEffect(() => {
+    loadCityOptions()
     if (isEdit) {
       loadHotelData()
     }
-  }, [isEdit, loadHotelData])
+  }, [isEdit, loadHotelData, loadCityOptions])
 
   // 处理房型变化
   const handleRoomTypeChange = (index, field, value) => {
@@ -121,8 +140,10 @@ const HotelFormPage = () => {
 
     setSubmitLoading(true)
     try {
+      const normalizedCity = values.city ? values.city.replace(/市$/, '') : values.city
       const hotelData = {
         ...values,
+        city: normalizedCity,
         coverImage: coverImage || undefined,
         images: hotelImages,
         roomTypes,
@@ -178,8 +199,10 @@ const HotelFormPage = () => {
 
     setSubmitLoading(true)
     try {
+      const normalizedCity = values.city ? values.city.replace(/市$/, '') : values.city
       const hotelData = {
         ...values,
+        city: normalizedCity,
         coverImage: coverImage || undefined,
         images: hotelImages,
         roomTypes,
@@ -263,7 +286,28 @@ const HotelFormPage = () => {
                 name="city"
                 rules={[{ required: true, message: '请输入城市' }]}
               >
-                <Input placeholder="请输入城市" />
+                <Select
+                  showSearch
+                  placeholder="请选择城市"
+                  loading={cityLoading}
+                  filterOption={(input, option) => {
+                    const keyword = (input || '').toLowerCase()
+                    const label = option?.label || option?.children || ''
+                    const pinyin = option?.pinyin || ''
+                    const value = option?.value || ''
+                    return (
+                      String(label).includes(input) ||
+                      String(value).includes(input) ||
+                      String(pinyin).toLowerCase().includes(keyword)
+                    )
+                  }}
+                >
+                  {cityOptions.map(city => (
+                    <Option key={city.name} value={city.name} pinyin={city.pinyin}>
+                      {city.name}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
 
               <Space size="middle" style={{ width: '100%' }}>
