@@ -1,31 +1,27 @@
 import { useState, useEffect } from 'react'
-import { View } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
-import { Button, Swiper, SwiperItem, Cell, Calendar, Input, Picker, Rate } from '@nutui/nutui-react-taro'
+import { View, ScrollView, Image, Text } from '@tarojs/components'
+import Taro from '@tarojs/taro'
+import { Button, Swiper, SwiperItem, Cell, Calendar, Input, Rate, Tag } from '@nutui/nutui-react-taro'
 import { ArrowRight, Search, Location, Date as DateIcon } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
 import './index.scss'
 
 export default function Home() {
-  const [userInfo, setUserInfo] = useState(null)
-  const [bannerHotelId, setBannerHotelId] = useState('')
+  const [bannerImages, setBannerImages] = useState([])
+  const [searching, setSearching] = useState(false)
 
   // 查询状态
   const [city, setCity] = useState('上海')
-  const [showCityPicker, setShowCityPicker] = useState(false)
   const [date, setDate] = useState(['2024-05-01', '2024-05-02']) // 默认日期，实际应动态获取
   const [showCalendar, setShowCalendar] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [star, setStar] = useState(0) // 0 表示不限
+  const [recommendList, setRecommendList] = useState([])
+  const [recommendPage, setRecommendPage] = useState(1)
+  const [recommendHasMore, setRecommendHasMore] = useState(true)
+  const [recommendLoading, setRecommendLoading] = useState(false)
 
-  // 城市选项
-  const cityOptions = [
-    { text: '上海', value: '上海' },
-    { text: '北京', value: '北京' },
-    { text: '广州', value: '广州' },
-    { text: '深圳', value: '深圳' },
-    { text: '杭州', value: '杭州' },
-  ]
+  const tagOptions = ['亲子', '豪华', '免费停车场', '暖气', '空调', '影音设施', '可携带动物', '健身房', '泳池', '早餐', '商务', '近地铁']
 
   // 初始化日期为今天和明天
   useEffect(() => {
@@ -43,166 +39,286 @@ export default function Home() {
         const res = await request({
           url: '/hotels',
           method: 'GET',
-          data: { page: 1, pageSize: 1 },
+          data: { page: 1, pageSize: 20 },
         })
-        const first = res && Array.isArray(res.list) && res.list.length > 0 ? res.list[0] : null
-        setBannerHotelId(first ? first.id : '')
+        const list = Array.isArray(res?.list) ? res.list : []
+        const images = list.map((item) => item?.coverImage).filter(Boolean)
+        const uniqueImages = Array.from(new Set(images))
+        const shuffled = [...uniqueImages]
+        for (let i = shuffled.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1))
+          const temp = shuffled[i]
+          shuffled[i] = shuffled[j]
+          shuffled[j] = temp
+        }
+        setBannerImages(shuffled.slice(0, 2))
       } catch {
-        setBannerHotelId('')
+        setBannerImages([])
       }
     }
     fetchBannerHotel()
   }, [])
 
-  // 检查登录态
-  const checkAuth = async () => {
-    try {
-      // 静默检查，不报错
-      const token = Taro.getStorageSync('token')
-      if (!token) return
+  useEffect(() => {
+    if (!city) return
+    setRecommendList([])
+    setRecommendPage(1)
+    setRecommendHasMore(true)
+    fetchRecommend(1, city)
+  }, [city])
 
-      const res = await request({ url: '/auth/me', method: 'GET' })
-      if (res.user) {
-        setUserInfo(res.user)
+  const shuffleList = (list) => {
+    const next = [...list]
+    for (let i = next.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const temp = next[i]
+      next[i] = next[j]
+      next[j] = temp
+    }
+    return next
+  }
+
+  const fetchRecommend = async (pageNum, cityName) => {
+    if (recommendLoading) return
+    setRecommendLoading(true)
+    try {
+      const res = await request({
+        url: '/hotels',
+        method: 'GET',
+        data: {
+          page: pageNum,
+          pageSize: 6,
+          city: cityName || ''
+        }
+      })
+      const list = Array.isArray(res?.list) ? res.list : []
+      const shuffled = shuffleList(list)
+      if (pageNum === 1) {
+        setRecommendList(shuffled)
+      } else {
+        setRecommendList(prev => [...prev, ...shuffled])
       }
-    } catch (e) {
-      // Token 无效，清除
-      Taro.removeStorageSync('token')
+      const pageSize = 6
+      if (typeof res.total === 'number') {
+        setRecommendHasMore(pageNum * pageSize < res.total)
+      } else {
+        setRecommendHasMore(list.length === pageSize)
+      }
+      setRecommendPage(pageNum)
+    } catch {
+      setRecommendHasMore(false)
+    } finally {
+      setRecommendLoading(false)
     }
   }
 
-  useDidShow(() => {
-    checkAuth()
-  })
-
-  const handleSearch = () => {
-    // 跳转到列表页，携带参数
+  const buildQueryString = (extra = {}) => {
     const params = {
       city,
       checkIn: date[0],
       checkOut: date[1],
       keyword,
-      star: star > 0 ? star : ''
+      star: star > 0 ? star : '',
+      ...extra
     }
-
-    // 构建 query string
-    const queryString = Object.keys(params)
+    return Object.keys(params)
       .filter(key => params[key])
       .map(key => `${key}=${encodeURIComponent(params[key])}`)
       .join('&')
-
-    Taro.navigateTo({ url: `/pages/list/index?${queryString}` })
   }
 
-  const handleBannerClick = () => {
-    if (!bannerHotelId) {
-      Taro.showToast({ title: '暂无可跳转酒店', icon: 'none' })
+  const handleSearch = () => {
+    if (searching) return
+    if (!city) {
+      Taro.showToast({ title: '请选择目的地', icon: 'none' })
       return
     }
-    Taro.navigateTo({ url: `/pages/detail/index?id=${bannerHotelId}&checkIn=${date[0]}&checkOut=${date[1]}` })
+    if (!date[0] || !date[1]) {
+      Taro.showToast({ title: '请选择入住和离店日期', icon: 'none' })
+      return
+    }
+    const start = new Date(date[0])
+    const end = new Date(date[1])
+    if (end <= start) {
+      Taro.showToast({ title: '离店日期需晚于入住日期', icon: 'none' })
+      return
+    }
+
+    const queryString = buildQueryString()
+
+    setSearching(true)
+    Taro.navigateTo({ url: `/pages/list/index?${queryString}` })
+    setTimeout(() => setSearching(false), 800)
   }
 
-  const handleLogout = () => {
-    Taro.removeStorageSync('token')
-    setUserInfo(null)
-    Taro.showToast({ title: '已退出登录', icon: 'success' })
+  const handleTagSearch = (tag) => {
+    if (searching) return
+    if (!city) {
+      Taro.showToast({ title: '请选择目的地', icon: 'none' })
+      return
+    }
+    if (!date[0] || !date[1]) {
+      Taro.showToast({ title: '请选择入住和离店日期', icon: 'none' })
+      return
+    }
+    const start = new Date(date[0])
+    const end = new Date(date[1])
+    if (end <= start) {
+      Taro.showToast({ title: '离店日期需晚于入住日期', icon: 'none' })
+      return
+    }
+    const queryString = buildQueryString({ tags: tag })
+    setSearching(true)
+    Taro.navigateTo({ url: `/pages/list/index?${queryString}` })
+    setTimeout(() => setSearching(false), 800)
+  }
+
+  const handleCitySelect = () => {
+    Taro.navigateTo({
+      url: `/pages/city/index?current=${encodeURIComponent(city || '')}`,
+      events: {
+        selectCity: (data) => {
+          if (data && data.city) {
+            setCity(data.city)
+          }
+        }
+      }
+    })
   }
 
   return (
-    <View className='home-page' style={{ paddingBottom: '20px', background: '#f5f5f5', minHeight: '100vh' }}>
-      {/* 顶部 Banner */}
-      <Swiper defaultValue={0} loop autoPlay>
-        <SwiperItem>
-          <View onClick={handleBannerClick} style={{ height: '200px', background: '#1989fa', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '24px' }}>
-            Trip Camp Hotel
-          </View>
-        </SwiperItem>
-        <SwiperItem>
-          <View onClick={handleBannerClick} style={{ height: '200px', background: '#ff976a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '24px' }}>
-            Enjoy Your Stay
-          </View>
-        </SwiperItem>
-      </Swiper>
+    <View className='home-page' style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+      <ScrollView
+        scrollY
+        style={{ height: '100vh' }}
+        onScrollToLower={() => {
+          if (recommendHasMore && !recommendLoading) {
+            fetchRecommend(recommendPage + 1, city)
+          }
+        }}
+        lowerThreshold={80}
+      >
+        {/* 顶部 Banner */}
+        {bannerImages.length > 0 && (
+          <Swiper defaultValue={0} loop autoPlay>
+            {bannerImages.map((img, idx) => (
+              <SwiperItem key={`${img}-${idx}`}>
+                <Image
+                  src={img}
+                  style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                  mode="aspectFill"
+                />
+              </SwiperItem>
+            ))}
+          </Swiper>
+        )}
 
-      {/* 查询表单区域 */}
-      <View style={{ margin: '16px', padding: '16px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }}>
+        {/* 查询表单区域 */}
+        <View style={{ margin: '16px', padding: '16px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }}>
 
-        {/* 城市选择 */}
-        <Cell
-          title={city && city !== '' ? city : '选择目的地'}
-          description={city && city !== '' ? '查询目的地' : "选择目的地"}
-          extra={<ArrowRight />}
-          align="center"
-          onClick={() => setShowCityPicker(true)}
-        >
-          <Location color="#1989fa" style={{ marginRight: '8px' }} />
-        </Cell>
-
-        {/* 日期选择 */}
-        <Cell
-          title={date[0] && date[1] ? `${date[0]} 至 ${date[1]}` : '选择日期'}
-          description={date[0] && date[1] ? `共 ${Math.ceil((new Date(date[1]) - new Date(date[0])) / (1000 * 60 * 60 * 24))} 晚` : '入住和离店日期'}
-          extra={<ArrowRight />}
-          align="center"
-          onClick={() => setShowCalendar(true)}
-        >
-          <DateIcon color="#1989fa" style={{ marginRight: '8px' }} />
-        </Cell>
-
-        {/* 关键词输入 */}
-        <View style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}>
-          <Input
-            placeholder="关键字/位置/品牌/酒店名"
-            value={keyword}
-            onChange={(val) => setKeyword(val)}
-            style={{ padding: 0 }}
+          {/* 城市选择 */}
+          <Cell
+            title={
+              <View style={{ display: 'flex', alignItems: 'center' }}>
+                <Location color="#1989fa" style={{ marginRight: '8px' }} />
+                <View>{city && city !== '' ? city : '选择目的地'}</View>
+              </View>
+            }
+            description={city && city !== '' ? '查询目的地' : "选择目的地"}
+            extra={<ArrowRight />}
+            align="center"
+            onClick={handleCitySelect}
           />
-        </View>
 
-        {/* 星级筛选 (简单实现) */}
-        <View style={{ padding: '16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ fontSize: '14px', color: '#666' }}>星级要求</View>
-          <Rate value={star} onChange={(val) => setStar(val)} />
-        </View>
+          {/* 日期选择 */}
+          <Cell
+            title={
+              <View style={{ display: 'flex', alignItems: 'center' }}>
+                <DateIcon color="#1989fa" style={{ marginRight: '8px' }} />
+                <View>{date[0] && date[1] ? `${date[0]} 至 ${date[1]}` : '请选择入住离店日期'}</View>
+              </View>
+            }
+            description={date[0] && date[1] ? `共 ${Math.ceil((new Date(date[1]) - new Date(date[0])) / (1000 * 60 * 60 * 24))} 晚` : '请选择入住离店日期'}
+            extra={<ArrowRight />}
+            align="center"
+            onClick={() => setShowCalendar(true)}
+          />
 
-        {/* 查询按钮 */}
-        <Button type="primary" block size="large" onClick={handleSearch} style={{ marginTop: '16px' }}>
-          查找酒店
-        </Button>
-      </View>
+          {/* 关键词输入 */}
+          <View style={{ padding: '10px 0', borderBottom: '1px solid #eee' }}>
+            <Input
+              placeholder="关键字/位置/品牌/酒店名"
+              value={keyword}
+              onChange={(val) => setKeyword(val)}
+              style={{ padding: 0 }}
+            />
+          </View>
 
-      {/* 登录状态显示 (辅助调试) */}
-      {userInfo ? (
-        <View style={{ margin: '16px', padding: '16px', background: '#fff', borderRadius: '8px', textAlign: 'center' }}>
-          <View style={{ marginBottom: '10px' }}>欢迎回来, {userInfo.username} ({userInfo.role})</View>
-          <Button size="small" type="danger" onClick={handleLogout}>退出登录</Button>
-        </View>
-      ) : (
-        <View style={{ margin: '16px', textAlign: 'center' }}>
-          <Button size="small" variant="text" onClick={() => Taro.navigateTo({ url: '/pages/login/index' })}>
-            去登录 (Login)
+          {/* 星级筛选 (简单实现) */}
+          <View style={{ padding: '16px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ fontSize: '14px', color: '#666' }}>星级要求</View>
+            <Rate value={star} onChange={(val) => setStar(val)} />
+          </View>
+
+          <ScrollView scrollX className='tag-scroll' style={{ width: '100%' }}>
+            <View style={{ display: 'inline-flex', gap: '10px', paddingBottom: '6px', flexWrap: 'nowrap' }}>
+              {tagOptions.map((tag) => (
+                <Tag
+                  key={tag}
+                  type="default"
+                  plain={false}
+                  onClick={() => handleTagSearch(tag)}
+                  style={{ height: '32px', padding: '0 12px', borderRadius: '16px', fontSize: '13px', fontWeight: 'bold', background: '#f5f5f5', border: '1px solid #eee', color: '#333', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+                >
+                  {tag}
+                </Tag>
+              ))}
+            </View>
+          </ScrollView>
+
+          {/* 查询按钮 */}
+          <Button type="primary" block size="large" onClick={handleSearch} disabled={searching} style={{ marginTop: '16px' }}>
+            {searching ? '跳转中...' : '查找酒店'}
           </Button>
         </View>
-      )}
 
-      {/* 弹窗组件 */}
-      <Picker
-        visible={showCityPicker}
-        options={[cityOptions]}
-        value={[city]}
-        onConfirm={(list, values) => {
-          // values[0] 是选中的值 (如 '北京')
-          // list[0] 是选中的对象 (如 {text:'北京', value:'北京'})
-          const selectedValue = values[0] ? values[0] : (list[0] ? list[0].value : '')
-          setCity(selectedValue)
-          setShowCityPicker(false)
-        }}
-        onClose={() => setShowCityPicker(false)}
-      />
+        <View style={{ margin: '0 16px 16px', background: '#fff', borderRadius: '8px', padding: '12px' }}>
+          <View style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '10px' }}>为你推荐</View>
+          <View style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            {recommendList.map((hotel) => (
+              <View
+                key={hotel.id}
+                style={{ width: 'calc(50% - 5px)', borderRadius: '8px', overflow: 'hidden', background: '#f9f9f9' }}
+                onClick={() => Taro.navigateTo({ url: `/pages/detail/index?id=${hotel.id}&checkIn=${date[0]}&checkOut=${date[1]}` })}
+              >
+                <Image
+                  src={hotel.coverImage || 'https://img12.360buyimg.com/imagetools/jfs/t1/196130/38/13621/2930/60c733bdEad3e90ac/251c5d836417d6d3.png'}
+                  style={{ width: '100%', height: '120px', objectFit: 'cover' }}
+                  mode="aspectFill"
+                />
+                <View style={{ padding: '8px' }}>
+                  <Text style={{ fontSize: '13px', fontWeight: 'bold', lineHeight: '18px' }}>{hotel.nameCn}</Text>
+                  <View style={{ display: 'flex', alignItems: 'center', marginTop: '6px', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: '12px', color: '#2db7f5', fontWeight: 'bold' }}>{hotel.star}.0</Text>
+                    <Text style={{ fontSize: '14px', color: '#ff6400', fontWeight: 'bold' }}>¥{hotel.minPrice}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+            {!recommendLoading && recommendList.length === 0 && (
+              <View style={{ color: '#999', padding: '12px 0', width: '100%', textAlign: 'center' }}>暂无推荐酒店</View>
+            )}
+          </View>
+          {recommendLoading && (
+            <View style={{ color: '#999', padding: '10px 0', textAlign: 'center' }}>加载中...</View>
+          )}
+        </View>
+      </ScrollView>
 
       <Calendar
         visible={showCalendar}
         type="range"
+        title="请选择入住离店日期"
         startDate={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
         endDate={`${new Date().getFullYear() + 1}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
         defaultValue={date}

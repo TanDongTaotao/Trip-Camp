@@ -4,16 +4,20 @@
   - 通过 GET /api/v1/auth/me 拉取最新用户信息（重点是 role）
   - 同时用 localStorage 的 user 做首屏兜底展示（减少白屏等待）
 */
-import { Typography, Card, Row, Col, message, Spin } from 'antd'
+import { Typography, Card, Row, Col, message, Spin, Button, Space } from 'antd'
 import { useEffect, useState } from 'react'
 import api from '../utils/api'
 import { getUser } from '../utils/auth'
+import { useNavigate } from 'react-router-dom'
 
 const { Title, Paragraph } = Typography
 
 const Dashboard = () => {
   const [userInfo, setUserInfo] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(false)
+  const [stats, setStats] = useState(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     // 首先从localStorage获取用户信息
@@ -37,6 +41,49 @@ const Dashboard = () => {
 
     fetchUserInfo()
   }, [])
+
+  useEffect(() => {
+    const role = userInfo?.role
+    if (!role) return
+    const fetchStats = async () => {
+      setStatsLoading(true)
+      try {
+        if (role === 'merchant') {
+          const response = await api.get('/merchant/stats', { params: { t: Date.now() } })
+          setStats(response)
+          return
+        }
+        if (role === 'admin') {
+          const response = await api.get('/admin/stats', { params: { t: Date.now() } })
+          setStats(response)
+          return
+        }
+        setStats(null)
+      } catch (error) {
+        message.error('获取统计数据失败：' + (error.response?.data?.message || error.message))
+        setStats(null)
+      } finally {
+        setStatsLoading(false)
+      }
+    }
+    fetchStats()
+  }, [userInfo?.role])
+
+  const handleQuickAddHotel = () => {
+    if (userInfo?.role === 'merchant') {
+      navigate('/merchant/hotel/add')
+      return
+    }
+    message.warning('当前角色无法录入酒店')
+  }
+
+  const handleViewAuditList = () => {
+    if (userInfo?.role === 'admin') {
+      navigate('/admin/audit')
+      return
+    }
+    message.warning('当前角色无法查看审核列表')
+  }
 
   return (
     <div>
@@ -71,14 +118,38 @@ const Dashboard = () => {
         </Col>
         <Col span={8}>
           <Card title="数据统计" variant="borderless">
-            <p>酒店总数：0</p>
-            <p>待审核：0</p>
+            {statsLoading ? (
+              <Spin size="small" />
+            ) : userInfo?.role === 'merchant' ? (
+              <p>我的酒店总数：{typeof stats?.total === 'number' ? stats.total : 0}</p>
+            ) : userInfo?.role === 'admin' ? (
+              <>
+                <p>已上线酒店数：{typeof stats?.onlineCount === 'number' ? stats.onlineCount : 0}</p>
+                <p>待上线酒店数：{typeof stats?.offlineCount === 'number' ? stats.offlineCount : 0}</p>
+                <p>待审核数：{typeof stats?.pendingCount === 'number' ? stats.pendingCount : 0}</p>
+              </>
+            ) : (
+              <Paragraph type="secondary">暂无可用统计数据</Paragraph>
+            )}
           </Card>
         </Col>
         <Col span={8}>
           <Card title="操作快捷" variant="borderless">
-            <p>快速添加酒店</p>
-            <p>查看审核列表</p>
+            {userInfo?.role === 'merchant' ? (
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Button type="primary" onClick={handleQuickAddHotel}>
+                  快速添加酒店
+                </Button>
+              </Space>
+            ) : userInfo?.role === 'admin' ? (
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Button onClick={handleViewAuditList}>
+                  查看审核列表
+                </Button>
+              </Space>
+            ) : (
+              <Paragraph type="secondary">暂无可用快捷入口</Paragraph>
+            )}
           </Card>
         </Col>
       </Row>

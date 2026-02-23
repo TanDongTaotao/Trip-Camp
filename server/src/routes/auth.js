@@ -5,7 +5,7 @@
 // - 统一错误输出为 { code, message, details? }，便于前端统一处理
 //
 // 路由（挂载路径：/api/v1/auth）：
-// - POST /register：注册（role=user/merchant/admin）
+// - POST /register：注册（role=merchant/admin）
 //   - 注意：是否允许注册 admin 由环境变量 ALLOW_ADMIN_REGISTER 控制
 // - POST /login：登录（根据 username/password 校验）
 // - GET  /me：获取当前登录用户（需要 Bearer Token）
@@ -49,7 +49,7 @@ router.post('/register', async (req, res, next) => {
       (allowAdminRegisterExplicit && ['true', '1', 'yes', 'y'].includes(allowAdminRegisterRaw)) ||
       (!allowAdminRegisterExplicit &&
         String(process.env.NODE_ENV || 'development').trim().toLowerCase() !== 'production')
-    const allowedRoles = ['user', 'merchant', 'admin']
+    const allowedRoles = ['merchant', 'admin']
 
     // 3) 基础参数校验
     // - 先保证后端行为稳定，再考虑引入复杂校验库（如 zod/joi）
@@ -150,6 +150,14 @@ router.post('/login', async (req, res, next) => {
       })
     }
 
+    if (user.role === 'user') {
+      throw new AppError({
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'User role disabled',
+      })
+    }
+
     const ok = await verifyPassword(password, user.passwordHash)
     if (!ok) {
       throw new AppError({
@@ -184,6 +192,13 @@ router.get('/me', requireAuth, async (req, res, next) => {
         status: 401,
         code: 'UNAUTHORIZED',
         message: 'Token missing or invalid',
+      })
+    }
+    if (user.role === 'user') {
+      throw new AppError({
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'User role disabled',
       })
     }
     res.json({ user: toUserPublic(user) })

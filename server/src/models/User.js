@@ -1,7 +1,7 @@
 // 用户模型（User）：
 // - username 唯一
 // - passwordHash 存哈希，不存明文密码
-// - role 用于权限控制（user/merchant/admin）
+// - role 用于权限控制（merchant/admin）
 const mongoose = require('mongoose')
 
 const userSchema = new mongoose.Schema(
@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ['user', 'merchant', 'admin'],
+      enum: ['merchant', 'admin'],
     },
   },
   { timestamps: true }

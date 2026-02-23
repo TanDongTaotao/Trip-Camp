@@ -61,6 +61,14 @@ const hotelSchema = new mongoose.Schema(
     },
     // 审核拒绝原因（仅 rejected 时有意义）
     rejectReason: { type: String, trim: true, default: null },
+    updateStatus: {
+      type: String,
+      required: true,
+      enum: ['none', 'draft', 'pending', 'rejected'],
+      default: 'none',
+    },
+    updateRejectReason: { type: String, trim: true, default: null },
+    updatePayload: { type: mongoose.Schema.Types.Mixed, default: null },
     // 软删除时间（可选加分，不做物理删除）
     deletedAt: { type: Date, default: null },
 
@@ -87,15 +95,22 @@ const hotelSchema = new mongoose.Schema(
 )
 
 // 保存前校验：当有房型时，强制 minPrice 等于房型最低价
-hotelSchema.pre('save', function normalizeMinPrice(next) {
-  if (Array.isArray(this.roomTypes) && this.roomTypes.length > 0) {
-    const prices = this.roomTypes
-      .map((rt) => Number(rt.price))
-      .filter((p) => Number.isFinite(p))
-    if (prices.length > 0) {
-      this.minPrice = Math.min(...prices)
-    }
-  }
+//
+// 注意：
+// - Mongoose 的 required 校验发生在 validate 阶段
+// - 如果只在 pre('save') 中赋值 minPrice，创建/更新时可能会先因为 minPrice 缺失而校验失败
+// - 因此这里在 pre('validate') 中先把 minPrice 纠正，再进入 required/min 校验
+function normalizeMinPrice(doc) {
+  if (!Array.isArray(doc.roomTypes) || doc.roomTypes.length === 0) return
+  const prices = doc.roomTypes
+    .map((rt) => Number(rt && rt.price))
+    .filter((p) => Number.isFinite(p))
+  if (prices.length === 0) return
+  doc.minPrice = Math.min(...prices)
+}
+
+hotelSchema.pre('validate', function preValidateNormalizeMinPrice(next) {
+  normalizeMinPrice(this)
   next()
 })
 
@@ -105,6 +120,8 @@ hotelSchema.index({ city: 1 })
 hotelSchema.index({ minPrice: 1 })
 hotelSchema.index({ star: -1 })
 hotelSchema.index({ ownerId: 1 })
+hotelSchema.index({ ownerId: 1, deletedAt: 1, updatedAt: -1 })
+hotelSchema.index({ ownerId: 1, deletedAt: 1, auditStatus: 1, onlineStatus: 1 })
 
 const Hotel = mongoose.model('Hotel', hotelSchema)
 
