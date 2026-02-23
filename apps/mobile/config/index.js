@@ -1,6 +1,44 @@
 // Taro 项目配置入口：
 // - mini：小程序相关构建配置
 // - h5：H5 构建与 devServer 配置
+const fs = require('fs')
+const path = require('path')
+
+const loadLocalEnv = () => {
+  const env = process.env.NODE_ENV || 'development'
+  const candidates = [
+    path.join(__dirname, `../.env.${env}.local`),
+    path.join(__dirname, '../.env.local')
+  ]
+  const applyEnv = (content) => {
+    content.split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) return
+      const idx = trimmed.indexOf('=')
+      if (idx === -1) return
+      const key = trimmed.slice(0, idx).trim()
+      let value = trimmed.slice(idx + 1).trim()
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1)
+      }
+      if (process.env[key] === undefined) {
+        process.env[key] = value
+      }
+    })
+  }
+  candidates.forEach((filePath) => {
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf8')
+      applyEnv(content)
+    }
+  })
+}
+
+loadLocalEnv()
+
 const config = {
   projectName: 'trip-camp-mobile',
   date: '2024-02-08',
@@ -14,6 +52,7 @@ const config = {
   outputRoot: 'dist',
   plugins: ['@tarojs/plugin-framework-react', '@tarojs/plugin-html'],
   defineConstants: {
+    BAIDU_AK: JSON.stringify(process.env.TARO_APP_BAIDU_AK || '')
   },
   copy: {
     patterns: [

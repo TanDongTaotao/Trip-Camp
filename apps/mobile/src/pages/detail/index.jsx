@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { View, Text, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Image, ScrollView, Map } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Swiper, SwiperItem, Rate, Tag, Divider, Button, Skeleton, Calendar } from '@nutui/nutui-react-taro'
 import { Location, Share, ArrowLeft } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
+import { mapService } from '../../utils/mapService'
 import './index.scss'
 
 const hotelTypeStyles = {
@@ -44,6 +45,12 @@ export default function Detail() {
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState(['', ''])
   const [showCalendar, setShowCalendar] = useState(false)
+  const [showMap, setShowMap] = useState(false)
+  const [mapImageUrl, setMapImageUrl] = useState('')
+  const [mapCoords, setMapCoords] = useState(null)
+  const [mapLoading, setMapLoading] = useState(false)
+  const env = Taro.getEnv()
+  const isH5 = env === Taro.ENV_TYPE.WEB || env === Taro.ENV_TYPE.H5
 
   const calcNights = (startStr, endStr) => {
     if (!startStr || !endStr) return ''
@@ -109,6 +116,47 @@ export default function Detail() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const openBaiduMap = async () => {
+    if (showMap) {
+      setShowMap(false)
+      return
+    }
+
+    const address = detail?.address || ''
+    if (!address) {
+      Taro.showToast({ title: '暂无酒店地址', icon: 'none' })
+      return
+    }
+
+    const name = detail?.nameCn || detail?.nameEn || '酒店位置'
+    const city = detail?.city || ''
+
+    try {
+      setMapLoading(true)
+
+      // 使用地图服务进行地理编码
+      const { lng, lat } = await mapService.validateAndGeocode(address, city)
+
+      setMapCoords({ latitude: lat, longitude: lng, title: name })
+
+      if (isH5) {
+        // 生成静态地图URL
+        const imgUrl = mapService.generateStaticMapUrl(lng, lat, {
+          width: 600,
+          height: 220,
+          zoom: 16
+        })
+        setMapImageUrl(imgUrl)
+      }
+
+      setShowMap(true)
+    } catch (error) {
+      Taro.showToast({ title: error.message, icon: 'none' })
+    } finally {
+      setMapLoading(false)
     }
   }
 
@@ -191,10 +239,51 @@ export default function Detail() {
             <Location size={16} color="#666" />
             <Text style={{ fontSize: '14px', color: '#333', marginLeft: '4px' }}>{detail.address}</Text>
           </View>
-          <View style={{ display: 'flex', alignItems: 'center', color: '#1989fa' }}>
-            <Text style={{ fontSize: '12px' }}>地图</Text>
+          <View
+            style={{ display: 'flex', alignItems: 'center', color: '#1989fa', padding: '4px 6px' }}
+            onClick={openBaiduMap}
+          >
+            <Text style={{ fontSize: '12px' }}>{showMap ? '收起地图' : '地图'}</Text>
           </View>
         </View>
+        {showMap && isH5 && (
+          <View style={{ marginTop: '10px', borderRadius: '8px', overflow: 'hidden' }}>
+            {mapLoading && <View style={{ padding: '12px', textAlign: 'center', color: '#999' }}>地图加载中...</View>}
+            {!mapLoading && mapImageUrl && (
+              <Image
+                src={mapImageUrl}
+                style={{ width: '100%', height: '220px', objectFit: 'cover' }}
+                mode="aspectFill"
+                onClick={() => {
+                  if (mapCoords) {
+                    mapService.openMap(mapCoords.longitude, mapCoords.latitude, mapCoords.title || '')
+                  }
+                }}
+              />
+            )}
+          </View>
+        )}
+        {showMap && !isH5 && (
+          <View style={{ marginTop: '10px', borderRadius: '8px', overflow: 'hidden' }}>
+            {mapLoading && <View style={{ padding: '12px', textAlign: 'center', color: '#999' }}>地图加载中...</View>}
+            {!mapLoading && mapCoords && (
+              <Map
+                style={{ width: '100%', height: '220px' }}
+                latitude={mapCoords.latitude}
+                longitude={mapCoords.longitude}
+                scale={16}
+                markers={[
+                  {
+                    id: 1,
+                    latitude: mapCoords.latitude,
+                    longitude: mapCoords.longitude,
+                    title: mapCoords.title
+                  }
+                ]}
+              />
+            )}
+          </View>
+        )}
       </View>
 
       {dateRange[0] && dateRange[1] && nightsText && (
