@@ -6,7 +6,7 @@
 */
 import { useState, useEffect, useCallback } from 'react'
 import { Typography, Card, Button, Space, Table, Tag, message, Modal, Input, Select } from 'antd'
-import { EditOutlined, CheckOutlined, EyeOutlined, ArrowLeftOutlined, SearchOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons'
+import { EditOutlined, CheckOutlined, EyeOutlined, ArrowLeftOutlined, SearchOutlined, DownloadOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons'
 import api from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 
@@ -126,6 +126,29 @@ const MerchantHotelListPage = () => {
     }
   }
 
+  const handleDelete = (hotel) => {
+    Modal.confirm({
+      title: '确认删除该酒店？',
+      content: `删除后用户端不可见，且该操作可通过数据库恢复（软删除）。酒店：${hotel?.nameCn || ''}`,
+      okText: '确认删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        setSubmitLoading(true)
+        try {
+          await api.delete(`/merchant/hotels/${hotel.id}`)
+          message.success('删除成功')
+          loadHotels()
+        } catch (error) {
+          message.error('删除失败')
+          console.error('删除失败:', error)
+        } finally {
+          setSubmitLoading(false)
+        }
+      }
+    })
+  }
+
   // 处理查看详情
   const handleViewDetail = (hotel) => {
     setSelectedHotel(hotel)
@@ -237,7 +260,7 @@ const MerchantHotelListPage = () => {
     {
       title: '操作',
       key: 'action',
-      width: 240,
+      width: 300,
       align: 'center',
       render: (_, record) => (
         <Space size="small" wrap>
@@ -297,6 +320,15 @@ const MerchantHotelListPage = () => {
               申请上线
             </Button>
           )}
+          <Button
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record)}
+            loading={submitLoading}
+          >
+            删除
+          </Button>
         </Space>
       )
     }
