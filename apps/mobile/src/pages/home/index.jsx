@@ -303,48 +303,52 @@ export default function Home() {
         }}
         lowerThreshold={80}
       >
-        {/* 顶部 Banner */}
-        {bannerItems.length > 0 && (
-          <View className='banner-wrapper'>
-            <View className="banner-bg">
-              <Image
-                src={extendBaseImage || bannerItems[0]?.image || ''}
-                className="banner-bg__img"
-                mode="aspectFill"
-              />
-              {!!extendOverlayImage && (
+        {/* 顶部 Banner（含占位，避免首次渲染搜索块顶到顶部） */}
+        <View className='banner-wrapper'>
+          {bannerItems.length > 0 ? (
+            <>
+              <View className="banner-bg">
                 <Image
-                  src={extendOverlayImage}
-                  className={`banner-bg__img banner-bg__img--overlay${extendOverlayVisible ? ' is-visible' : ''}`}
+                  src={extendBaseImage || bannerItems[0]?.image || ''}
+                  className="banner-bg__img"
                   mode="aspectFill"
                 />
-              )}
-              <View className="banner-bg__mask" />
-            </View>
-            <Swiper defaultValue={0} loop autoPlay className='banner-swiper' onChange={handleBannerChange}>
-              {bannerItems.map((item, idx) => (
-                <SwiperItem key={`${item.image}-${idx}`}>
-                  <View
-                    className="banner-slide"
-                    onClick={() => {
-                      if (!item.id) return
-                      Taro.navigateTo({ url: `/pages/detail/index?id=${item.id}&checkIn=${date[0]}&checkOut=${date[1]}` })
-                    }}
-                  >
-                    <Image
-                      src={item.image}
-                      className='banner-image'
-                      mode="aspectFill"
-                    />
-                  </View>
-                </SwiperItem>
-              ))}
-            </Swiper>
-          </View>
-        )}
+                {!!extendOverlayImage && (
+                  <Image
+                    src={extendOverlayImage}
+                    className={`banner-bg__img banner-bg__img--overlay${extendOverlayVisible ? ' is-visible' : ''}`}
+                    mode="aspectFill"
+                  />
+                )}
+                <View className="banner-bg__mask" />
+              </View>
+              <Swiper defaultValue={0} loop autoPlay className='banner-swiper' onChange={handleBannerChange}>
+                {bannerItems.map((item, idx) => (
+                  <SwiperItem key={`${item.image}-${idx}`}>
+                    <View
+                      className="banner-slide"
+                      onClick={() => {
+                        if (!item.id) return
+                        Taro.navigateTo({ url: `/pages/detail/index?id=${item.id}&checkIn=${date[0]}&checkOut=${date[1]}` })
+                      }}
+                    >
+                      <Image
+                        src={item.image}
+                        className='banner-image'
+                        mode="aspectFill"
+                      />
+                    </View>
+                  </SwiperItem>
+                ))}
+              </Swiper>
+            </>
+          ) : (
+            <View className="banner-placeholder" />
+          )}
+        </View>
 
         {/* 查询表单区域 */}
-        <View className={`search-card ${bannerItems.length > 0 ? 'search-card--overlap' : ''}`}>
+        <View className="search-card search-card--overlap">
 
           {/* 城市选择 */}
           <Cell

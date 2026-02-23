@@ -69,6 +69,30 @@ export default function Detail() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   }
 
+  const formatDateShort = (dateValue) => {
+    if (!dateValue) return ''
+    if (dateValue instanceof Date) {
+      const month = String(dateValue.getMonth() + 1).padStart(2, '0')
+      const day = String(dateValue.getDate()).padStart(2, '0')
+      return `${month}月${day}日`
+    }
+    if (typeof dateValue === 'string') {
+      const fullMatch = dateValue.match(/^\s*\d{4}[\/\-年](\d{1,2})[\/\-月](\d{1,2})/)
+      if (fullMatch) {
+        const month = String(Number(fullMatch[1] || '') || '').padStart(2, '0')
+        const day = String(Number(fullMatch[2] || '') || '').padStart(2, '0')
+        return `${month}月${day}日`
+      }
+      const shortMatch = dateValue.match(/(\d{1,2})[\/\-月](\d{1,2})/)
+      if (shortMatch) {
+        const month = String(Number(shortMatch[1] || '') || '').padStart(2, '0')
+        const day = String(Number(shortMatch[2] || '') || '').padStart(2, '0')
+        return `${month}月${day}日`
+      }
+    }
+    return String(dateValue)
+  }
+
   const parseCalendarRange = (param) => {
     if (!param || param.length < 2) return ['', '']
     if (Array.isArray(param[0]) && param[0][3]) {
@@ -304,7 +328,7 @@ export default function Detail() {
           <View>
             <View style={{ fontSize: '14px', color: '#666' }}>入住离店</View>
             <View style={{ marginTop: '4px', fontSize: '14px', fontWeight: 'bold' }}>
-              {dateRange[0]} 至 {dateRange[1]}
+              {formatDateShort(dateRange[0])} 至 {formatDateShort(dateRange[1])}
             </View>
           </View>
           <View style={{ textAlign: 'right' }}>

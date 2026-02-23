@@ -15,6 +15,12 @@
   overflow: visible;
 }
 
+.banner-placeholder {
+  height: 250px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #dfe7f3 0%, #eef2f7 55%, #f7f8fa 100%);
+}
+
 .banner-bg {
   position: absolute;
   left: 0;
