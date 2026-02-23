@@ -9,6 +9,10 @@ import './index.scss'
 export default function Home() {
   const [bannerImages, setBannerImages] = useState([])
   const [searching, setSearching] = useState(false)
+  const defaultBannerImages = [
+    'https://img14.360buyimg.com/imagetools/jfs/t1/207165/35/14739/209318/62552c4dE49c9a5f6/eb7a0a24e75d2a9d.jpg',
+    'https://img14.360buyimg.com/imagetools/jfs/t1/186160/31/20514/166907/624b9c2eEfa5d4b27/6b0a0ebfdc1a9a47.jpg'
+  ]
 
   // 查询状态
   const [city, setCity] = useState('上海')
@@ -20,6 +24,30 @@ export default function Home() {
   const [recommendPage, setRecommendPage] = useState(1)
   const [recommendHasMore, setRecommendHasMore] = useState(true)
   const [recommendLoading, setRecommendLoading] = useState(false)
+
+  const formatDateShort = (dateValue) => {
+    if (!dateValue) return ''
+    if (dateValue instanceof Date) {
+      const month = String(dateValue.getMonth() + 1).padStart(2, '0')
+      const day = String(dateValue.getDate()).padStart(2, '0')
+      return `${month}月${day}日`
+    }
+    if (typeof dateValue === 'string') {
+      const fullMatch = dateValue.match(/^\s*\d{4}[\/\-年](\d{1,2})[\/\-月](\d{1,2})/)
+      if (fullMatch) {
+        const month = String(Number(fullMatch[1] || '') || '').padStart(2, '0')
+        const day = String(Number(fullMatch[2] || '') || '').padStart(2, '0')
+        return `${month}月${day}日`
+      }
+      const shortMatch = dateValue.match(/(\d{1,2})[\/\-月](\d{1,2})/)
+      if (shortMatch) {
+        const month = String(Number(shortMatch[1] || '') || '').padStart(2, '0')
+        const day = String(Number(shortMatch[2] || '') || '').padStart(2, '0')
+        return `${month}月${day}日`
+      }
+    }
+    return String(dateValue)
+  }
 
   const tagOptions = ['亲子', '豪华', '免费停车场', '暖气', '空调', '影音设施', '可携带动物', '健身房', '泳池', '早餐', '商务', '近地铁']
 
@@ -51,9 +79,10 @@ export default function Home() {
           shuffled[i] = shuffled[j]
           shuffled[j] = temp
         }
-        setBannerImages(shuffled.slice(0, 2))
+        const nextImages = shuffled.slice(0, 2)
+        setBannerImages(nextImages.length > 0 ? nextImages : defaultBannerImages)
       } catch {
-        setBannerImages([])
+        setBannerImages(defaultBannerImages)
       }
     }
     fetchBannerHotel()
@@ -200,21 +229,24 @@ export default function Home() {
       >
         {/* 顶部 Banner */}
         {bannerImages.length > 0 && (
-          <Swiper defaultValue={0} loop autoPlay>
-            {bannerImages.map((img, idx) => (
-              <SwiperItem key={`${img}-${idx}`}>
-                <Image
-                  src={img}
-                  style={{ width: '100%', height: '200px', objectFit: 'cover' }}
-                  mode="aspectFill"
-                />
-              </SwiperItem>
-            ))}
-          </Swiper>
+          <View className='banner-wrapper'>
+            <Swiper defaultValue={0} loop autoPlay className='banner-swiper'>
+              {bannerImages.map((img, idx) => (
+                <SwiperItem key={`${img}-${idx}`}>
+                  <Image
+                    src={img}
+                    className='banner-image'
+                    mode="aspectFill"
+                  />
+                </SwiperItem>
+              ))}
+            </Swiper>
+            <View className='banner-fade' />
+          </View>
         )}
 
         {/* 查询表单区域 */}
-        <View style={{ margin: '16px', padding: '16px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }}>
+        <View className={`search-card ${bannerImages.length > 0 ? 'search-card--overlap' : ''}`}>
 
           {/* 城市选择 */}
           <Cell
@@ -235,7 +267,7 @@ export default function Home() {
             title={
               <View style={{ display: 'flex', alignItems: 'center' }}>
                 <DateIcon color="#1989fa" style={{ marginRight: '8px' }} />
-                <View>{date[0] && date[1] ? `${date[0]} 至 ${date[1]}` : '请选择入住离店日期'}</View>
+                <View>{date[0] && date[1] ? `${formatDateShort(date[0])} 至 ${formatDateShort(date[1])}` : '请选择入住离店日期'}</View>
               </View>
             }
             description={date[0] && date[1] ? `共 ${Math.ceil((new Date(date[1]) - new Date(date[0])) / (1000 * 60 * 60 * 24))} 晚` : '请选择入住离店日期'}
@@ -293,14 +325,14 @@ export default function Home() {
               >
                 <Image
                   src={hotel.coverImage || 'https://img12.360buyimg.com/imagetools/jfs/t1/196130/38/13621/2930/60c733bdEad3e90ac/251c5d836417d6d3.png'}
-                  style={{ width: '100%', height: '120px', objectFit: 'cover' }}
+                  style={{ width: '100%', height: '96px', objectFit: 'cover' }}
                   mode="aspectFill"
                 />
-                <View style={{ padding: '8px' }}>
-                  <Text style={{ fontSize: '13px', fontWeight: 'bold', lineHeight: '18px' }}>{hotel.nameCn}</Text>
-                  <View style={{ display: 'flex', alignItems: 'center', marginTop: '6px', justifyContent: 'space-between' }}>
+                <View style={{ padding: '6px' }}>
+                  <Text style={{ fontSize: '12px', fontWeight: 'bold', lineHeight: '16px' }}>{hotel.nameCn}</Text>
+                  <View style={{ display: 'flex', alignItems: 'center', marginTop: '4px', justifyContent: 'space-between' }}>
                     <Text style={{ fontSize: '12px', color: '#2db7f5', fontWeight: 'bold' }}>{hotel.star}.0</Text>
-                    <Text style={{ fontSize: '14px', color: '#ff6400', fontWeight: 'bold' }}>¥{hotel.minPrice}</Text>
+                    <Text style={{ fontSize: '13px', color: '#ff6400', fontWeight: 'bold' }}>¥{hotel.minPrice}</Text>
                   </View>
                 </View>
               </View>
