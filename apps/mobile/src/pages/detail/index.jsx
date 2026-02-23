@@ -94,6 +94,16 @@ export default function Detail() {
     setDateRange([formatDate(today), formatDate(tomorrow)])
   }, [checkIn, checkOut])
 
+  useEffect(() => {
+    if (!isH5 || typeof document === 'undefined') return
+    document.body.classList.add('hide-scrollbar')
+    document.documentElement.classList.add('hide-scrollbar')
+    return () => {
+      document.body.classList.remove('hide-scrollbar')
+      document.documentElement.classList.remove('hide-scrollbar')
+    }
+  }, [isH5])
+
   const fetchDetail = async (hotelId) => {
     try {
       setLoading(true)
@@ -181,8 +191,8 @@ export default function Detail() {
     : []
   const nightsText = calcNights(dateRange[0], dateRange[1])
 
-  return (
-    <View className='detail-page' style={{ paddingTop: '44px', paddingBottom: '80px', background: '#f5f5f5', minHeight: '100vh' }}>
+  const pageContent = (
+    <View style={{ paddingTop: '44px', paddingBottom: '80px', background: '#f5f5f5', minHeight: '100vh' }}>
       <View style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '44px', background: 'rgba(255,255,255,0.96)', display: 'flex', alignItems: 'center', padding: '0 12px', zIndex: 1000, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         <View style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => Taro.navigateBack()}>
           <ArrowLeft size={18} color="#333" />
@@ -364,4 +374,16 @@ export default function Detail() {
       />
     </View>
   )
+
+  if (isH5) {
+    return (
+      <View className='detail-page' style={{ height: '100vh', overflow: 'hidden', background: '#f5f5f5' }}>
+        <ScrollView scrollY className="page-scroll" style={{ height: '100vh' }}>
+          {pageContent}
+        </ScrollView>
+      </View>
+    )
+  }
+
+  return <View className='detail-page'>{pageContent}</View>
 }

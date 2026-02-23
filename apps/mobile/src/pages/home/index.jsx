@@ -7,7 +7,13 @@ import { request } from '../../utils/request'
 import './index.scss'
 
 export default function Home() {
-  const [bannerImages, setBannerImages] = useState([])
+  const env = Taro.getEnv()
+  const isH5 = env === Taro.ENV_TYPE.WEB || env === Taro.ENV_TYPE.H5
+  const [bannerItems, setBannerItems] = useState([])
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0)
+  const [extendBaseImage, setExtendBaseImage] = useState('')
+  const [extendOverlayImage, setExtendOverlayImage] = useState('')
+  const [extendOverlayVisible, setExtendOverlayVisible] = useState(false)
   const [searching, setSearching] = useState(false)
   const defaultBannerImages = [
     'https://img14.360buyimg.com/imagetools/jfs/t1/207165/35/14739/209318/62552c4dE49c9a5f6/eb7a0a24e75d2a9d.jpg',
@@ -62,6 +68,16 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
+    if (!isH5 || typeof document === 'undefined') return
+    document.body.classList.add('hide-scrollbar')
+    document.documentElement.classList.add('hide-scrollbar')
+    return () => {
+      document.body.classList.remove('hide-scrollbar')
+      document.documentElement.classList.remove('hide-scrollbar')
+    }
+  }, [])
+
+  useEffect(() => {
     const fetchBannerHotel = async () => {
       try {
         const res = await request({
@@ -70,23 +86,82 @@ export default function Home() {
           data: { page: 1, pageSize: 20 },
         })
         const list = Array.isArray(res?.list) ? res.list : []
-        const images = list.map((item) => item?.coverImage).filter(Boolean)
-        const uniqueImages = Array.from(new Set(images))
-        const shuffled = [...uniqueImages]
+        const candidates = list
+          .map((item) => ({ id: item?.id, image: item?.coverImage }))
+          .filter((item) => item.id && item.image)
+        const uniqueByImage = new Map()
+        candidates.forEach((item) => {
+          if (!uniqueByImage.has(item.image)) {
+            uniqueByImage.set(item.image, item)
+          }
+        })
+        const uniqueItems = Array.from(uniqueByImage.values())
+        const shuffled = [...uniqueItems]
         for (let i = shuffled.length - 1; i > 0; i -= 1) {
           const j = Math.floor(Math.random() * (i + 1))
           const temp = shuffled[i]
           shuffled[i] = shuffled[j]
           shuffled[j] = temp
         }
-        const nextImages = shuffled.slice(0, 2)
-        setBannerImages(nextImages.length > 0 ? nextImages : defaultBannerImages)
+        const nextItems = shuffled.slice(0, 2)
+        if (nextItems.length > 0) {
+          setBannerItems(nextItems)
+        } else {
+          setBannerItems(defaultBannerImages.map((image) => ({ id: '', image })))
+        }
       } catch {
-        setBannerImages(defaultBannerImages)
+        setBannerItems(defaultBannerImages.map((image) => ({ id: '', image })))
       }
     }
     fetchBannerHotel()
   }, [])
+
+  useEffect(() => {
+    const firstImage = bannerItems?.[0]?.image || ''
+    setActiveBannerIndex(0)
+    setExtendBaseImage(firstImage)
+    setExtendOverlayImage('')
+    setExtendOverlayVisible(false)
+  }, [bannerItems])
+
+  const normalizeBannerIndex = (idx) => {
+    const len = bannerItems.length
+    if (!len) return 0
+    const n = Number(idx)
+    if (!Number.isFinite(n)) return 0
+    return ((n % len) + len) % len
+  }
+
+  const handleBannerChange = (val) => {
+    const idx =
+      typeof val === 'number'
+        ? val
+        : (val?.detail?.current ?? val?.current ?? val?.index ?? val?.value ?? 0)
+    const nextIndex = normalizeBannerIndex(idx)
+    setActiveBannerIndex(nextIndex)
+  }
+
+  useEffect(() => {
+    const nextImage = bannerItems?.[activeBannerIndex]?.image || ''
+    if (!nextImage) return
+    if (!extendBaseImage) {
+      setExtendBaseImage(nextImage)
+      return
+    }
+    if (nextImage === extendBaseImage) return
+    setExtendOverlayImage(nextImage)
+    setExtendOverlayVisible(false)
+    const showTimer = setTimeout(() => setExtendOverlayVisible(true), 16)
+    const commitTimer = setTimeout(() => {
+      setExtendBaseImage(nextImage)
+      setExtendOverlayVisible(false)
+      setExtendOverlayImage('')
+    }, 260)
+    return () => {
+      clearTimeout(showTimer)
+      clearTimeout(commitTimer)
+    }
+  }, [activeBannerIndex, bannerItems, extendBaseImage])
 
   useEffect(() => {
     if (!city) return
@@ -216,9 +291,10 @@ export default function Home() {
   }
 
   return (
-    <View className='home-page' style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+    <View className='home-page' style={{ background: '#f5f5f5', minHeight: '100vh', ...(isH5 ? { height: '100vh', overflow: 'hidden' } : {}) }}>
       <ScrollView
         scrollY
+        className="page-scroll"
         style={{ height: '100vh' }}
         onScrollToLower={() => {
           if (recommendHasMore && !recommendLoading) {
@@ -228,25 +304,47 @@ export default function Home() {
         lowerThreshold={80}
       >
         {/* 顶部 Banner */}
-        {bannerImages.length > 0 && (
+        {bannerItems.length > 0 && (
           <View className='banner-wrapper'>
-            <Swiper defaultValue={0} loop autoPlay className='banner-swiper'>
-              {bannerImages.map((img, idx) => (
-                <SwiperItem key={`${img}-${idx}`}>
-                  <Image
-                    src={img}
-                    className='banner-image'
-                    mode="aspectFill"
-                  />
+            <View className="banner-bg">
+              <Image
+                src={extendBaseImage || bannerItems[0]?.image || ''}
+                className="banner-bg__img"
+                mode="aspectFill"
+              />
+              {!!extendOverlayImage && (
+                <Image
+                  src={extendOverlayImage}
+                  className={`banner-bg__img banner-bg__img--overlay${extendOverlayVisible ? ' is-visible' : ''}`}
+                  mode="aspectFill"
+                />
+              )}
+              <View className="banner-bg__mask" />
+            </View>
+            <Swiper defaultValue={0} loop autoPlay className='banner-swiper' onChange={handleBannerChange}>
+              {bannerItems.map((item, idx) => (
+                <SwiperItem key={`${item.image}-${idx}`}>
+                  <View
+                    className="banner-slide"
+                    onClick={() => {
+                      if (!item.id) return
+                      Taro.navigateTo({ url: `/pages/detail/index?id=${item.id}&checkIn=${date[0]}&checkOut=${date[1]}` })
+                    }}
+                  >
+                    <Image
+                      src={item.image}
+                      className='banner-image'
+                      mode="aspectFill"
+                    />
+                  </View>
                 </SwiperItem>
               ))}
             </Swiper>
-            <View className='banner-fade' />
           </View>
         )}
 
         {/* 查询表单区域 */}
-        <View className={`search-card ${bannerImages.length > 0 ? 'search-card--overlap' : ''}`}>
+        <View className={`search-card ${bannerItems.length > 0 ? 'search-card--overlap' : ''}`}>
 
           {/* 城市选择 */}
           <Cell
