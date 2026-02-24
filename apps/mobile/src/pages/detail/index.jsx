@@ -5,6 +5,7 @@ import { Swiper, SwiperItem, Rate, Tag, Divider, Button, Skeleton, Calendar } fr
 import { Location, Share, ArrowLeft } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
 import { mapService } from '../../utils/mapService'
+import LazyImage from '../../components/LazyImage'
 import './index.scss'
 
 const hotelTypeStyles = {
@@ -345,7 +346,7 @@ export default function Detail() {
         {sortedRoomTypes.length > 0 ? (
           sortedRoomTypes.map((room, idx) => (
             <View key={idx} style={{ display: 'flex', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #eee' }}>
-              <Image
+              <LazyImage
                 src={room.images && room.images.length > 0 ? room.images[0] : 'https://img12.360buyimg.com/imagetools/jfs/t1/147573/29/16034/8547/5fa0520dE99a806c9/91b99819777174e7.png'}
                 style={{ width: '80px', height: '80px', borderRadius: '4px', marginRight: '10px' }}
                 mode="aspectFill"

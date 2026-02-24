@@ -4,6 +4,7 @@ import Taro from '@tarojs/taro'
 import { Button, Swiper, SwiperItem, Cell, Calendar, Input, Rate, Tag } from '@nutui/nutui-react-taro'
 import { ArrowRight, Search, Location, Date as DateIcon } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
+import LazyImage from '../../components/LazyImage'
 import './index.scss'
 
 export default function Home() {
@@ -367,9 +368,13 @@ export default function Home() {
           {/* 日期选择 */}
           <Cell
             title={
-              <View style={{ display: 'flex', alignItems: 'center' }}>
-                <DateIcon color="#1989fa" style={{ marginRight: '8px' }} />
-                <View>{date[0] && date[1] ? `${formatDateShort(date[0])} 至 ${formatDateShort(date[1])}` : '请选择入住离店日期'}</View>
+              <View style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
+                <View style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '10px', flexShrink: 0 }}>
+                  <DateIcon color="#1989fa" />
+                </View>
+                <View style={{ flex: 1, minWidth: 0, paddingLeft: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {date[0] && date[1] ? `${formatDateShort(date[0])} 至 ${formatDateShort(date[1])}` : '请选择入住离店日期'}
+                </View>
               </View>
             }
             description={date[0] && date[1] ? `共 ${Math.ceil((new Date(date[1]) - new Date(date[0])) / (1000 * 60 * 60 * 24))} 晚` : '请选择入住离店日期'}
@@ -425,7 +430,7 @@ export default function Home() {
                 style={{ width: 'calc(50% - 5px)', borderRadius: '8px', overflow: 'hidden', background: '#f9f9f9' }}
                 onClick={() => Taro.navigateTo({ url: `/pages/detail/index?id=${hotel.id}&checkIn=${date[0]}&checkOut=${date[1]}` })}
               >
-                <Image
+                <LazyImage
                   src={hotel.coverImage || 'https://img12.360buyimg.com/imagetools/jfs/t1/196130/38/13621/2930/60c733bdEad3e90ac/251c5d836417d6d3.png'}
                   style={{ width: '100%', height: '96px', objectFit: 'cover' }}
                   mode="aspectFill"

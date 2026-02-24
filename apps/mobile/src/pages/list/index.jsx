@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { View, Image, ScrollView, Text } from '@tarojs/components'
+import { View, ScrollView, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Tag, Rate, Loading, Empty, Skeleton, Calendar, Input } from '@nutui/nutui-react-taro'
 import { ArrowLeft, Search, Location } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
+import LazyImage from '../../components/LazyImage'
 import './index.scss'
 
 const hotelTypeStyles = {
@@ -518,7 +519,7 @@ export default function List() {
                 onClick={() => Taro.navigateTo({ url: `/pages/detail/index?id=${item.id}&checkIn=${queryParams.checkIn}&checkOut=${queryParams.checkOut}` })}
               >
                 {/* 左侧图片 */}
-                <Image
+                <LazyImage
                   src={item.coverImage || 'https://img12.360buyimg.com/imagetools/jfs/t1/196130/38/13621/2930/60c733bdEad3e90ac/251c5d836417d6d3.png'}
                   style={{ width: '120px', height: '120px', objectFit: 'cover' }}
                   mode="aspectFill"
