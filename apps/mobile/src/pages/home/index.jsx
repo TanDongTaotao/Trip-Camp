@@ -7,8 +7,18 @@ import { request } from '../../utils/request'
 import './index.scss'
 
 export default function Home() {
-  const [bannerImages, setBannerImages] = useState([])
+  const env = Taro.getEnv()
+  const isH5 = env === Taro.ENV_TYPE.WEB || env === Taro.ENV_TYPE.H5
+  const [bannerItems, setBannerItems] = useState([])
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0)
+  const [extendBaseImage, setExtendBaseImage] = useState('')
+  const [extendOverlayImage, setExtendOverlayImage] = useState('')
+  const [extendOverlayVisible, setExtendOverlayVisible] = useState(false)
   const [searching, setSearching] = useState(false)
+  const defaultBannerImages = [
+    'https://img14.360buyimg.com/imagetools/jfs/t1/207165/35/14739/209318/62552c4dE49c9a5f6/eb7a0a24e75d2a9d.jpg',
+    'https://img14.360buyimg.com/imagetools/jfs/t1/186160/31/20514/166907/624b9c2eEfa5d4b27/6b0a0ebfdc1a9a47.jpg'
+  ]
 
   // 查询状态
   const [city, setCity] = useState('上海')
@@ -20,6 +30,30 @@ export default function Home() {
   const [recommendPage, setRecommendPage] = useState(1)
   const [recommendHasMore, setRecommendHasMore] = useState(true)
   const [recommendLoading, setRecommendLoading] = useState(false)
+
+  const formatDateShort = (dateValue) => {
+    if (!dateValue) return ''
+    if (dateValue instanceof Date) {
+      const month = String(dateValue.getMonth() + 1).padStart(2, '0')
+      const day = String(dateValue.getDate()).padStart(2, '0')
+      return `${month}月${day}日`
+    }
+    if (typeof dateValue === 'string') {
+      const fullMatch = dateValue.match(/^\s*\d{4}[\/\-年](\d{1,2})[\/\-月](\d{1,2})/)
+      if (fullMatch) {
+        const month = String(Number(fullMatch[1] || '') || '').padStart(2, '0')
+        const day = String(Number(fullMatch[2] || '') || '').padStart(2, '0')
+        return `${month}月${day}日`
+      }
+      const shortMatch = dateValue.match(/(\d{1,2})[\/\-月](\d{1,2})/)
+      if (shortMatch) {
+        const month = String(Number(shortMatch[1] || '') || '').padStart(2, '0')
+        const day = String(Number(shortMatch[2] || '') || '').padStart(2, '0')
+        return `${month}月${day}日`
+      }
+    }
+    return String(dateValue)
+  }
 
   const tagOptions = ['亲子', '豪华', '免费停车场', '暖气', '空调', '影音设施', '可携带动物', '健身房', '泳池', '早餐', '商务', '近地铁']
 
@@ -34,6 +68,16 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
+    if (!isH5 || typeof document === 'undefined') return
+    document.body.classList.add('hide-scrollbar')
+    document.documentElement.classList.add('hide-scrollbar')
+    return () => {
+      document.body.classList.remove('hide-scrollbar')
+      document.documentElement.classList.remove('hide-scrollbar')
+    }
+  }, [])
+
+  useEffect(() => {
     const fetchBannerHotel = async () => {
       try {
         const res = await request({
@@ -42,22 +86,82 @@ export default function Home() {
           data: { page: 1, pageSize: 20 },
         })
         const list = Array.isArray(res?.list) ? res.list : []
-        const images = list.map((item) => item?.coverImage).filter(Boolean)
-        const uniqueImages = Array.from(new Set(images))
-        const shuffled = [...uniqueImages]
+        const candidates = list
+          .map((item) => ({ id: item?.id, image: item?.coverImage }))
+          .filter((item) => item.id && item.image)
+        const uniqueByImage = new Map()
+        candidates.forEach((item) => {
+          if (!uniqueByImage.has(item.image)) {
+            uniqueByImage.set(item.image, item)
+          }
+        })
+        const uniqueItems = Array.from(uniqueByImage.values())
+        const shuffled = [...uniqueItems]
         for (let i = shuffled.length - 1; i > 0; i -= 1) {
           const j = Math.floor(Math.random() * (i + 1))
           const temp = shuffled[i]
           shuffled[i] = shuffled[j]
           shuffled[j] = temp
         }
-        setBannerImages(shuffled.slice(0, 2))
+        const nextItems = shuffled.slice(0, 2)
+        if (nextItems.length > 0) {
+          setBannerItems(nextItems)
+        } else {
+          setBannerItems(defaultBannerImages.map((image) => ({ id: '', image })))
+        }
       } catch {
-        setBannerImages([])
+        setBannerItems(defaultBannerImages.map((image) => ({ id: '', image })))
       }
     }
     fetchBannerHotel()
   }, [])
+
+  useEffect(() => {
+    const firstImage = bannerItems?.[0]?.image || ''
+    setActiveBannerIndex(0)
+    setExtendBaseImage(firstImage)
+    setExtendOverlayImage('')
+    setExtendOverlayVisible(false)
+  }, [bannerItems])
+
+  const normalizeBannerIndex = (idx) => {
+    const len = bannerItems.length
+    if (!len) return 0
+    const n = Number(idx)
+    if (!Number.isFinite(n)) return 0
+    return ((n % len) + len) % len
+  }
+
+  const handleBannerChange = (val) => {
+    const idx =
+      typeof val === 'number'
+        ? val
+        : (val?.detail?.current ?? val?.current ?? val?.index ?? val?.value ?? 0)
+    const nextIndex = normalizeBannerIndex(idx)
+    setActiveBannerIndex(nextIndex)
+  }
+
+  useEffect(() => {
+    const nextImage = bannerItems?.[activeBannerIndex]?.image || ''
+    if (!nextImage) return
+    if (!extendBaseImage) {
+      setExtendBaseImage(nextImage)
+      return
+    }
+    if (nextImage === extendBaseImage) return
+    setExtendOverlayImage(nextImage)
+    setExtendOverlayVisible(false)
+    const showTimer = setTimeout(() => setExtendOverlayVisible(true), 16)
+    const commitTimer = setTimeout(() => {
+      setExtendBaseImage(nextImage)
+      setExtendOverlayVisible(false)
+      setExtendOverlayImage('')
+    }, 260)
+    return () => {
+      clearTimeout(showTimer)
+      clearTimeout(commitTimer)
+    }
+  }, [activeBannerIndex, bannerItems, extendBaseImage])
 
   useEffect(() => {
     if (!city) return
@@ -187,9 +291,10 @@ export default function Home() {
   }
 
   return (
-    <View className='home-page' style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+    <View className='home-page' style={{ background: '#f5f5f5', minHeight: '100vh', ...(isH5 ? { height: '100vh', overflow: 'hidden' } : {}) }}>
       <ScrollView
         scrollY
+        className="page-scroll"
         style={{ height: '100vh' }}
         onScrollToLower={() => {
           if (recommendHasMore && !recommendLoading) {
@@ -198,23 +303,52 @@ export default function Home() {
         }}
         lowerThreshold={80}
       >
-        {/* 顶部 Banner */}
-        {bannerImages.length > 0 && (
-          <Swiper defaultValue={0} loop autoPlay>
-            {bannerImages.map((img, idx) => (
-              <SwiperItem key={`${img}-${idx}`}>
+        {/* 顶部 Banner（含占位，避免首次渲染搜索块顶到顶部） */}
+        <View className='banner-wrapper'>
+          {bannerItems.length > 0 ? (
+            <>
+              <View className="banner-bg">
                 <Image
-                  src={img}
-                  style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                  src={extendBaseImage || bannerItems[0]?.image || ''}
+                  className="banner-bg__img"
                   mode="aspectFill"
                 />
-              </SwiperItem>
-            ))}
-          </Swiper>
-        )}
+                {!!extendOverlayImage && (
+                  <Image
+                    src={extendOverlayImage}
+                    className={`banner-bg__img banner-bg__img--overlay${extendOverlayVisible ? ' is-visible' : ''}`}
+                    mode="aspectFill"
+                  />
+                )}
+                <View className="banner-bg__mask" />
+              </View>
+              <Swiper defaultValue={0} loop autoPlay className='banner-swiper' onChange={handleBannerChange}>
+                {bannerItems.map((item, idx) => (
+                  <SwiperItem key={`${item.image}-${idx}`}>
+                    <View
+                      className="banner-slide"
+                      onClick={() => {
+                        if (!item.id) return
+                        Taro.navigateTo({ url: `/pages/detail/index?id=${item.id}&checkIn=${date[0]}&checkOut=${date[1]}` })
+                      }}
+                    >
+                      <Image
+                        src={item.image}
+                        className='banner-image'
+                        mode="aspectFill"
+                      />
+                    </View>
+                  </SwiperItem>
+                ))}
+              </Swiper>
+            </>
+          ) : (
+            <View className="banner-placeholder" />
+          )}
+        </View>
 
         {/* 查询表单区域 */}
-        <View style={{ margin: '16px', padding: '16px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }}>
+        <View className="search-card search-card--overlap">
 
           {/* 城市选择 */}
           <Cell
@@ -235,7 +369,7 @@ export default function Home() {
             title={
               <View style={{ display: 'flex', alignItems: 'center' }}>
                 <DateIcon color="#1989fa" style={{ marginRight: '8px' }} />
-                <View>{date[0] && date[1] ? `${date[0]} 至 ${date[1]}` : '请选择入住离店日期'}</View>
+                <View>{date[0] && date[1] ? `${formatDateShort(date[0])} 至 ${formatDateShort(date[1])}` : '请选择入住离店日期'}</View>
               </View>
             }
             description={date[0] && date[1] ? `共 ${Math.ceil((new Date(date[1]) - new Date(date[0])) / (1000 * 60 * 60 * 24))} 晚` : '请选择入住离店日期'}
@@ -293,14 +427,14 @@ export default function Home() {
               >
                 <Image
                   src={hotel.coverImage || 'https://img12.360buyimg.com/imagetools/jfs/t1/196130/38/13621/2930/60c733bdEad3e90ac/251c5d836417d6d3.png'}
-                  style={{ width: '100%', height: '120px', objectFit: 'cover' }}
+                  style={{ width: '100%', height: '96px', objectFit: 'cover' }}
                   mode="aspectFill"
                 />
-                <View style={{ padding: '8px' }}>
-                  <Text style={{ fontSize: '13px', fontWeight: 'bold', lineHeight: '18px' }}>{hotel.nameCn}</Text>
-                  <View style={{ display: 'flex', alignItems: 'center', marginTop: '6px', justifyContent: 'space-between' }}>
+                <View style={{ padding: '6px' }}>
+                  <Text style={{ fontSize: '12px', fontWeight: 'bold', lineHeight: '16px' }}>{hotel.nameCn}</Text>
+                  <View style={{ display: 'flex', alignItems: 'center', marginTop: '4px', justifyContent: 'space-between' }}>
                     <Text style={{ fontSize: '12px', color: '#2db7f5', fontWeight: 'bold' }}>{hotel.star}.0</Text>
-                    <Text style={{ fontSize: '14px', color: '#ff6400', fontWeight: 'bold' }}>¥{hotel.minPrice}</Text>
+                    <Text style={{ fontSize: '13px', color: '#ff6400', fontWeight: 'bold' }}>¥{hotel.minPrice}</Text>
                   </View>
                 </View>
               </View>

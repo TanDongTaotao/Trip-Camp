@@ -496,4 +496,27 @@ router.post('/hotels/:id/submit', requireAuth, requireRole('merchant'), async (r
   }
 })
 
+router.delete('/hotels/:id', requireAuth, requireRole('merchant'), async (req, res, next) => {
+  try {
+    const ownerId = req.user && req.user.id
+    const id = assertObjectId(req.params.id)
+
+    const hotel = await Hotel.findOne({ _id: id, deletedAt: null })
+    if (!hotel) {
+      throw new AppError({ status: 404, code: 'NOT_FOUND', message: 'Hotel not found' })
+    }
+    if (String(hotel.ownerId || '') !== String(ownerId || '')) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Permission denied' })
+    }
+
+    hotel.deletedAt = new Date()
+    hotel.onlineStatus = 'offline'
+    await hotel.save()
+
+    res.json({ ok: true })
+  } catch (e) {
+    next(e)
+  }
+})
+
 module.exports = { merchantRouter: router }

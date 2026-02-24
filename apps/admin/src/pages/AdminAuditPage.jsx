@@ -7,7 +7,7 @@
 */
 import { useState, useEffect, useCallback } from 'react'
 import { Typography, Card, Button, Space, Table, Tag, message, Modal, Input, Select, Form, Image, Divider, Spin } from 'antd'
-import { ArrowLeftOutlined, SearchOutlined, CheckCircleOutlined, CloseCircleOutlined, UploadOutlined, DownloadOutlined, EyeOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, SearchOutlined, CheckCircleOutlined, CloseCircleOutlined, UploadOutlined, DownloadOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons'
 import api from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 
@@ -143,6 +143,29 @@ const AdminAuditPage = () => {
     } finally {
       setActionLoading(false)
     }
+  }
+
+  const handleDelete = (hotel) => {
+    Modal.confirm({
+      title: '确认删除该酒店？',
+      content: `删除后用户端不可见，且该操作可通过数据库恢复（软删除）。酒店：${hotel?.nameCn || ''}`,
+      okText: '确认删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        setActionLoading(true)
+        try {
+          await api.delete(`/admin/hotels/${hotel.id}`)
+          message.success('删除成功')
+          loadHotels()
+        } catch (error) {
+          message.error('删除失败')
+          console.error('删除失败:', error)
+        } finally {
+          setActionLoading(false)
+        }
+      }
+    })
   }
 
   // 打开审核模态框
@@ -305,7 +328,7 @@ const AdminAuditPage = () => {
     {
       title: '操作',
       key: 'action',
-      width: 220,
+      width: 280,
       align: 'center',
       render: (_, record) => (
         <Space size="small" wrap>
@@ -381,6 +404,15 @@ const AdminAuditPage = () => {
               )}
             </>
           )}
+          <Button
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record)}
+            loading={actionLoading}
+          >
+            删除
+          </Button>
         </Space>
       )
     }

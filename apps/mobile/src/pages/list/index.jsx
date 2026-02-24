@@ -36,6 +36,8 @@ export default function List() {
   const [keywordInput, setKeywordInput] = useState('')
   const [pricePanelOpen, setPricePanelOpen] = useState(false)
   const [starPanelOpen, setStarPanelOpen] = useState(false)
+  const [showBackTop, setShowBackTop] = useState(false)
+  const [scrollIntoView, setScrollIntoView] = useState('')
 
   // 查询参数
   const [queryParams, setQueryParams] = useState({
@@ -156,6 +158,22 @@ export default function List() {
         queryParams.maxPrice
       )
     }
+  }
+
+  const handleScroll = (e) => {
+    const top = e?.detail?.scrollTop || 0
+    setShowBackTop((prev) => {
+      if (top > 400 && !prev) return true
+      if (top <= 400 && prev) return false
+      return prev
+    })
+  }
+
+  const handleBackTop = () => {
+    setScrollIntoView('list-top-anchor')
+    setTimeout(() => {
+      setScrollIntoView('')
+    }, 200)
   }
 
   // 排序切换
@@ -454,7 +472,11 @@ export default function List() {
         style={{ flex: 1 }}
         onScrollToLower={handleScrollToLower}
         lowerThreshold={80}
+        onScroll={handleScroll}
+        scrollIntoView={scrollIntoView}
+        scrollWithAnimation
       >
+        <View id="list-top-anchor" />
         {initialLoading && list.length === 0 ? (
           <View style={{ padding: '10px' }}>
             {[1, 2, 3].map((i) => (
@@ -545,6 +567,12 @@ export default function List() {
           !loading && <Empty description="暂无酒店数据" />
         )}
       </ScrollView>
+
+      {showBackTop && (
+        <View className="back-top" onClick={handleBackTop}>
+          <Text>↑</Text>
+        </View>
+      )}
 
       <Calendar
         visible={showCalendar}

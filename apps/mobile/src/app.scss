@@ -1,1 +1,29 @@
-/* app.scss */
+html.hide-scrollbar,
+body.hide-scrollbar {
+  overflow: hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html.hide-scrollbar::-webkit-scrollbar,
+body.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.page-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.page-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.page-scroll * {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.page-scroll *::-webkit-scrollbar {
+  display: none;
+}

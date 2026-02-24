@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { View, Text, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Image, ScrollView, Map } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { Swiper, SwiperItem, Rate, Tag, Divider, Button, Skeleton, Calendar } from '@nutui/nutui-react-taro'
 import { Location, Share, ArrowLeft } from '@nutui/icons-react-taro'
 import { request } from '../../utils/request'
+import { mapService } from '../../utils/mapService'
 import './index.scss'
 
 const hotelTypeStyles = {
@@ -44,6 +45,12 @@ export default function Detail() {
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState(['', ''])
   const [showCalendar, setShowCalendar] = useState(false)
+  const [showMap, setShowMap] = useState(false)
+  const [mapImageUrl, setMapImageUrl] = useState('')
+  const [mapCoords, setMapCoords] = useState(null)
+  const [mapLoading, setMapLoading] = useState(false)
+  const env = Taro.getEnv()
+  const isH5 = env === Taro.ENV_TYPE.WEB || env === Taro.ENV_TYPE.H5
 
   const calcNights = (startStr, endStr) => {
     if (!startStr || !endStr) return ''
@@ -60,6 +67,30 @@ export default function Detail() {
     if (!d) return ''
     if (typeof d === 'string') return d
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  const formatDateShort = (dateValue) => {
+    if (!dateValue) return ''
+    if (dateValue instanceof Date) {
+      const month = String(dateValue.getMonth() + 1).padStart(2, '0')
+      const day = String(dateValue.getDate()).padStart(2, '0')
+      return `${month}月${day}日`
+    }
+    if (typeof dateValue === 'string') {
+      const fullMatch = dateValue.match(/^\s*\d{4}[\/\-年](\d{1,2})[\/\-月](\d{1,2})/)
+      if (fullMatch) {
+        const month = String(Number(fullMatch[1] || '') || '').padStart(2, '0')
+        const day = String(Number(fullMatch[2] || '') || '').padStart(2, '0')
+        return `${month}月${day}日`
+      }
+      const shortMatch = dateValue.match(/(\d{1,2})[\/\-月](\d{1,2})/)
+      if (shortMatch) {
+        const month = String(Number(shortMatch[1] || '') || '').padStart(2, '0')
+        const day = String(Number(shortMatch[2] || '') || '').padStart(2, '0')
+        return `${month}月${day}日`
+      }
+    }
+    return String(dateValue)
   }
 
   const parseCalendarRange = (param) => {
@@ -87,6 +118,16 @@ export default function Detail() {
     setDateRange([formatDate(today), formatDate(tomorrow)])
   }, [checkIn, checkOut])
 
+  useEffect(() => {
+    if (!isH5 || typeof document === 'undefined') return
+    document.body.classList.add('hide-scrollbar')
+    document.documentElement.classList.add('hide-scrollbar')
+    return () => {
+      document.body.classList.remove('hide-scrollbar')
+      document.documentElement.classList.remove('hide-scrollbar')
+    }
+  }, [isH5])
+
   const fetchDetail = async (hotelId) => {
     try {
       setLoading(true)
@@ -112,6 +153,47 @@ export default function Detail() {
     }
   }
 
+  const openBaiduMap = async () => {
+    if (showMap) {
+      setShowMap(false)
+      return
+    }
+
+    const address = detail?.address || ''
+    if (!address) {
+      Taro.showToast({ title: '暂无酒店地址', icon: 'none' })
+      return
+    }
+
+    const name = detail?.nameCn || detail?.nameEn || '酒店位置'
+    const city = detail?.city || ''
+
+    try {
+      setMapLoading(true)
+
+      // 使用地图服务进行地理编码
+      const { lng, lat } = await mapService.validateAndGeocode(address, city)
+
+      setMapCoords({ latitude: lat, longitude: lng, title: name })
+
+      if (isH5) {
+        // 生成静态地图URL
+        const imgUrl = mapService.generateStaticMapUrl(lng, lat, {
+          width: 600,
+          height: 220,
+          zoom: 16
+        })
+        setMapImageUrl(imgUrl)
+      }
+
+      setShowMap(true)
+    } catch (error) {
+      Taro.showToast({ title: error.message, icon: 'none' })
+    } finally {
+      setMapLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <View style={{ padding: '16px' }}>
@@ -133,8 +215,8 @@ export default function Detail() {
     : []
   const nightsText = calcNights(dateRange[0], dateRange[1])
 
-  return (
-    <View className='detail-page' style={{ paddingTop: '44px', paddingBottom: '80px', background: '#f5f5f5', minHeight: '100vh' }}>
+  const pageContent = (
+    <View style={{ paddingTop: '44px', paddingBottom: '80px', background: '#f5f5f5', minHeight: '100vh' }}>
       <View style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '44px', background: 'rgba(255,255,255,0.96)', display: 'flex', alignItems: 'center', padding: '0 12px', zIndex: 1000, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         <View style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => Taro.navigateBack()}>
           <ArrowLeft size={18} color="#333" />
@@ -191,10 +273,51 @@ export default function Detail() {
             <Location size={16} color="#666" />
             <Text style={{ fontSize: '14px', color: '#333', marginLeft: '4px' }}>{detail.address}</Text>
           </View>
-          <View style={{ display: 'flex', alignItems: 'center', color: '#1989fa' }}>
-            <Text style={{ fontSize: '12px' }}>地图</Text>
+          <View
+            style={{ display: 'flex', alignItems: 'center', color: '#1989fa', padding: '4px 6px' }}
+            onClick={openBaiduMap}
+          >
+            <Text style={{ fontSize: '12px' }}>{showMap ? '收起地图' : '地图'}</Text>
           </View>
         </View>
+        {showMap && isH5 && (
+          <View style={{ marginTop: '10px', borderRadius: '8px', overflow: 'hidden' }}>
+            {mapLoading && <View style={{ padding: '12px', textAlign: 'center', color: '#999' }}>地图加载中...</View>}
+            {!mapLoading && mapImageUrl && (
+              <Image
+                src={mapImageUrl}
+                style={{ width: '100%', height: '220px', objectFit: 'cover' }}
+                mode="aspectFill"
+                onClick={() => {
+                  if (mapCoords) {
+                    mapService.openMap(mapCoords.longitude, mapCoords.latitude, mapCoords.title || '')
+                  }
+                }}
+              />
+            )}
+          </View>
+        )}
+        {showMap && !isH5 && (
+          <View style={{ marginTop: '10px', borderRadius: '8px', overflow: 'hidden' }}>
+            {mapLoading && <View style={{ padding: '12px', textAlign: 'center', color: '#999' }}>地图加载中...</View>}
+            {!mapLoading && mapCoords && (
+              <Map
+                style={{ width: '100%', height: '220px' }}
+                latitude={mapCoords.latitude}
+                longitude={mapCoords.longitude}
+                scale={16}
+                markers={[
+                  {
+                    id: 1,
+                    latitude: mapCoords.latitude,
+                    longitude: mapCoords.longitude,
+                    title: mapCoords.title
+                  }
+                ]}
+              />
+            )}
+          </View>
+        )}
       </View>
 
       {dateRange[0] && dateRange[1] && nightsText && (
@@ -205,7 +328,7 @@ export default function Detail() {
           <View>
             <View style={{ fontSize: '14px', color: '#666' }}>入住离店</View>
             <View style={{ marginTop: '4px', fontSize: '14px', fontWeight: 'bold' }}>
-              {dateRange[0]} 至 {dateRange[1]}
+              {formatDateShort(dateRange[0])} 至 {formatDateShort(dateRange[1])}
             </View>
           </View>
           <View style={{ textAlign: 'right' }}>
@@ -275,4 +398,16 @@ export default function Detail() {
       />
     </View>
   )
+
+  if (isH5) {
+    return (
+      <View className='detail-page' style={{ height: '100vh', overflow: 'hidden', background: '#f5f5f5' }}>
+        <ScrollView scrollY className="page-scroll" style={{ height: '100vh' }}>
+          {pageContent}
+        </ScrollView>
+      </View>
+    )
+  }
+
+  return <View className='detail-page'>{pageContent}</View>
 }
