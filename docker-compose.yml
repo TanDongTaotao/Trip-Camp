@@ -9,13 +9,14 @@ services:
     restart: unless-stopped
     ports:
       - "13000:3000"
-    volumes:
-      - ./server/.env:/app/server/.env:ro
+    env_file:
+      - ./server/.env
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1" ]
+      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:3000/health',res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))" ]
       interval: 10s
       timeout: 3s
       retries: 10
+      start_period: 30s
 
   admin:
     build:
@@ -30,8 +31,7 @@ services:
     ports:
       - "18080:80"
     depends_on:
-      api:
-        condition: service_healthy
+      - api
 
   mobile:
     build:
@@ -46,5 +46,4 @@ services:
     ports:
       - "18081:80"
     depends_on:
-      api:
-        condition: service_healthy
+      - api

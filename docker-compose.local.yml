@@ -1,0 +1,22 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: tripcamp-mongo
+    restart: unless-stopped
+    volumes:
+      - tripcamp_mongo_data:/data/db
+    healthcheck:
+      test: [ "CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    environment:
+      MONGODB_URI: "mongodb://mongo:27017/tripcamp"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  tripcamp_mongo_data:

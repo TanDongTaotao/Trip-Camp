@@ -1,13 +1,12 @@
 import Taro from '@tarojs/taro'
 
 // API 基础地址：
-// - H5：默认直连本机后端（http://localhost:3000/api/v1）
+// - H5：默认走同源 /api/v1（由 Nginx/DevServer 反代到后端）
 // - 小程序：默认直连本机后端（开发期），也可用 TARO_APP_API_BASE_URL 覆盖（真机联调时用局域网 IP）
-const DEFAULT_API_BASE_URL = 'http://localhost:3000/api/v1'
+const DEFAULT_API_BASE_URL =
+  typeof window !== 'undefined' ? '/api/v1' : 'http://localhost:3000/api/v1'
 
 const API_BASE_URL =
-  // H5 构建时注入的环境变量（有些构建环境没有 process，所以要做保护）
-  (typeof process !== 'undefined' && process?.env?.TARO_APP_API_BASE_URL) ||
   // 运行时全局变量（可选：有些部署会用 window/globalThis 注入）
   (typeof globalThis !== 'undefined' && globalThis?.TARO_APP_API_BASE_URL) ||
   DEFAULT_API_BASE_URL
