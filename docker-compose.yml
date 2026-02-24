@@ -11,6 +11,11 @@ services:
       - "13000:3000"
     volumes:
       - ./server/.env:/app/server/.env:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1" ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
 
   admin:
     build:
@@ -25,7 +30,8 @@ services:
     ports:
       - "18080:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
   mobile:
     build:
@@ -40,4 +46,5 @@ services:
     ports:
       - "18081:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
