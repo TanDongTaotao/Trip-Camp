@@ -15,6 +15,8 @@ export default function Home() {
   const [extendBaseImage, setExtendBaseImage] = useState('')
   const [extendOverlayImage, setExtendOverlayImage] = useState('')
   const [extendOverlayVisible, setExtendOverlayVisible] = useState(false)
+  const [bannerLoaded, setBannerLoaded] = useState({})
+  const [bannerFirstLoaded, setBannerFirstLoaded] = useState(false)
   const [searching, setSearching] = useState(false)
   const defaultBannerImages = [
     'https://img14.360buyimg.com/imagetools/jfs/t1/207165/35/14739/209318/62552c4dE49c9a5f6/eb7a0a24e75d2a9d.jpg',
@@ -123,6 +125,8 @@ export default function Home() {
     setExtendBaseImage(firstImage)
     setExtendOverlayImage('')
     setExtendOverlayVisible(false)
+    setBannerLoaded({})
+    setBannerFirstLoaded(false)
   }, [bannerItems])
 
   const normalizeBannerIndex = (idx) => {
@@ -163,6 +167,32 @@ export default function Home() {
       clearTimeout(commitTimer)
     }
   }, [activeBannerIndex, bannerItems, extendBaseImage])
+
+  const markBannerLoaded = (url) => {
+    if (!url) return
+    setBannerLoaded((prev) => (prev && prev[url] ? prev : { ...(prev || {}), [url]: true }))
+  }
+
+  useEffect(() => {
+    if (!isH5) return
+    if (!bannerFirstLoaded) return
+    if (!bannerItems || bannerItems.length <= 1) return
+    if (typeof window === 'undefined') return
+    if (typeof window.Image !== 'function') return
+
+    const activeUrl = bannerItems?.[activeBannerIndex]?.image || ''
+    const candidates = bannerItems.map((x) => x?.image).filter(Boolean)
+    candidates.forEach((url) => {
+      if (!url) return
+      if (url === activeUrl) return
+      if (bannerLoaded && bannerLoaded[url]) return
+      const img = new window.Image()
+      img.decoding = 'async'
+      img.loading = 'eager'
+      img.onload = () => markBannerLoaded(url)
+      img.src = url
+    })
+  }, [activeBannerIndex, bannerFirstLoaded, bannerItems, bannerLoaded, isH5])
 
   useEffect(() => {
     if (!city) return
@@ -309,12 +339,14 @@ export default function Home() {
           {bannerItems.length > 0 ? (
             <>
               <View className="banner-bg">
-                <Image
-                  src={extendBaseImage || bannerItems[0]?.image || ''}
-                  className="banner-bg__img"
-                  mode="aspectFill"
-                />
-                {!!extendOverlayImage && (
+                {!!(extendBaseImage && bannerLoaded && bannerLoaded[extendBaseImage]) && (
+                  <Image
+                    src={extendBaseImage || bannerItems[0]?.image || ''}
+                    className="banner-bg__img"
+                    mode="aspectFill"
+                  />
+                )}
+                {!!(extendOverlayImage && bannerLoaded && bannerLoaded[extendOverlayImage]) && (
                   <Image
                     src={extendOverlayImage}
                     className={`banner-bg__img banner-bg__img--overlay${extendOverlayVisible ? ' is-visible' : ''}`}
@@ -323,7 +355,7 @@ export default function Home() {
                 )}
                 <View className="banner-bg__mask" />
               </View>
-              <Swiper defaultValue={0} loop autoPlay className='banner-swiper' onChange={handleBannerChange}>
+              <Swiper defaultValue={0} loop autoPlay={bannerFirstLoaded} className='banner-swiper' onChange={handleBannerChange}>
                 {bannerItems.map((item, idx) => (
                   <SwiperItem key={`${item.image}-${idx}`}>
                     <View
@@ -333,11 +365,23 @@ export default function Home() {
                         Taro.navigateTo({ url: `/pages/detail/index?id=${item.id}&checkIn=${date[0]}&checkOut=${date[1]}` })
                       }}
                     >
-                      <Image
-                        src={item.image}
-                        className='banner-image'
-                        mode="aspectFill"
-                      />
+                      {idx === activeBannerIndex ? (
+                        <Image
+                          src={item.image}
+                          className='banner-image'
+                          mode="aspectFill"
+                          onLoad={() => {
+                            markBannerLoaded(item.image)
+                            if (idx === 0) setBannerFirstLoaded(true)
+                          }}
+                          onError={() => {
+                            markBannerLoaded(item.image)
+                            if (idx === 0) setBannerFirstLoaded(true)
+                          }}
+                        />
+                      ) : (
+                        <View className="banner-image-placeholder" />
+                      )}
                     </View>
                   </SwiperItem>
                 ))}
