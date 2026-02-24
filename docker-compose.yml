@@ -1,0 +1,43 @@
+services:
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: node:lts-bookworm-slim
+    container_name: tripcamp-api
+    restart: unless-stopped
+    ports:
+      - "13000:3000"
+    volumes:
+      - ./server/.env:/app/server/.env:ro
+
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: node:lts-bookworm-slim
+        NGINX_IMAGE: nginx:stable-alpine
+        VITE_API_BASE_URL: /api/v1
+    container_name: tripcamp-admin
+    restart: unless-stopped
+    ports:
+      - "18080:80"
+    depends_on:
+      - api
+
+  mobile:
+    build:
+      context: ./apps/mobile
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: node:lts-bookworm-slim
+        NGINX_IMAGE: nginx:stable-alpine
+        TARO_APP_API_BASE_URL: /api/v1
+    container_name: tripcamp-mobile
+    restart: unless-stopped
+    ports:
+      - "18081:80"
+    depends_on:
+      - api
